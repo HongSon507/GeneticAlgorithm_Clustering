@@ -1,0 +1,5 @@
+numpy
+scikit-learn
+matplotlib
+scipy
+numba        # optional: accelerates the NKCV2 kernels; a pure-Python fallback is used if absent

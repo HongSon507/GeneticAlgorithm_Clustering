@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.nbi
+*.nbc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.claude/
+submission/
+tmp-doc-report/
+

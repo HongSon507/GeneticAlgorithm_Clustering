@@ -153,6 +153,66 @@ tổng quát hóa mạnh.
 4. Nếu Jain vẫn hỏng: thay `c_ij` bằng `b_DCM` (§2).
 5. Nếu Iris/S4 vẫn hỏng: thêm tầng gộp ngoài (§4).
 
+## 7b. Kết quả thực nghiệm §1 (NKCV-A) và §4 (hai tầng)
+
+Mã: `models/nkcv2_affinity.py` (NKCV-A), `models/two_level_merge.py` (gộp theo BIC),
+`experiments/run_nkcva_two_level.py`. Dữ liệu thô: `results/nkcva_two_level_<bộ>.csv`.
+
+Tên trong code: `ca_gmm` = **A-CA** (đồng xuất hiện từ ensemble GMM, k = 2..10, 5 seed mỗi k),
+`gmm` = **A-GMM** (posterior của GMM chọn k theo BIC), `snn` = **A-SNN** (`k = 10`).
+
+Kiểm tra đúng đắn, tất cả PASS: `β=0` trùng NKCV2 đến 1e-12; Delta Evaluation khớp đánh giá lại
+qua 300 nước đi cho cả bốn nguồn; PX trả fitness đúng đến 1e-16, con không tệ hơn cha mẹ, và
+`fix_labels` giữ nguyên fitness.
+
+Giao thức như README §8: seed 100–102, `pop=60`, `gen=80`, `K=3`. `inner` là nhãn NK-HGA, `merged` là
+nhãn sau bước gộp BIC (cùng một lần chạy GA). Số trong ngoặc là số cụm trung bình.
+
+| Bộ | base (NKCV2) | A-CA β=.25 | A-CA β=.5 | A-CA β=.75 | A-GMM β=.5 | A-SNN β=.5 |
+|---|---|---|---|---|---|---|
+| Aggregation, inner | 0.928 (6.3) | 0.910 (6.0) | 0.883 (5.7) | 0.885 (5.7) | 0.836 (5.0) | **0.965** (6.7) |
+| Flame, inner | 0.013 (2.0) | 0.013 (1.0) | 0.013 (1.0) | 0.013 (1.0) | 0.332 ± 0.55 (1.3) | 0.284 ± 0.47 (1.7) |
+| Flame, merged | 0.000 (1.0) | 0.013 | 0.013 | 0.013 | 0.013 | 0.011 |
+| Iris, inner | 0.528 (6.3) | 0.544 (3.0) | 0.541 (3.3) | 0.551 (2.3) | 0.548 (2.0) | 0.532 (4.7) |
+| Iris, merged | 0.561 (2.0) | 0.548 (2.0) | 0.548 (2.0) | 0.552 (2.0) | 0.548 (2.0) | 0.548 (2.0) |
+| Jain, inner | 0.327 (7.7) | 0.240 (5.7) | **0.539** ± 0.20 (4.0) | 0.247 (2.7) | 0.440 (4.7) | 0.170 (10.7) |
+| Jain, merged | 0.348 (4.3) | 0.116 | 0.539 | 0.168 | 0.440 | 0.259 |
+
+Trên Aggregation bước gộp không đổi nhãn nào, nên chỉ ghi dòng `inner`.
+
+### Đọc kết quả
+
+1. **NKCV-A không giải được chồng lấn trên Iris.** Phép thử A1 (nhãn thật so với lời giải GA) trượt
+   với mọi `β` và mọi `K ∈ {3, 6, 10}`. Lý do đo được: trên các cạnh Gep cắt ngang versicolor/virginica,
+   ái lực vẫn cao (A-CA 0.58, A-GMM 0.90, A-SNN 0.44), so với cạnh cùng lớp (0.86 / 1.00 / 0.67). Ở
+   thang 3 láng giềng gần nhất, hai lớp thực sự trộn lẫn.
+2. **Iris 3 lớp không xác định được nếu không cho trước số cụm.** GMM full covariance trên Iris đã
+   chuẩn hóa có BIC(k=2) = 794.7 < BIC(k=3) = 801.5, nên **chính GMM cũng chọn 2 cụm**. Nó chỉ đạt
+   ARI 0.904 khi được cho trước `k=3`. Lời giải "setosa / phần còn lại" có ARI 0.568, và mọi biến thể
+   ở trên đều nằm sát trần này. Các phương pháp báo Iris ≈ 0.77–0.90 (như DP-GA-PFCM, Kuo et al.
+   2023) đều **cho trước `k`**. Do đó Iris không phải phép thử công bằng cho NK-HGA (tự tìm số cụm);
+   cần dùng bộ có chồng lấn được kiểm soát (S1–S4, §6).
+3. **Flame: NKCV-A sửa được fitness nhưng GA không tìm tới.** Với `K=3`, `β=0.5`, A1 **đạt**:
+   f(nhãn thật) = 0.02818 < f(GA) = 0.02880. Thế nhưng GA vẫn trả về 1–2 cụm. A-GMM và A-SNN thành
+   công ở 1/3 seed (độ lệch chuẩn ~0.5). Đây là giới hạn của bộ tìm kiếm, không còn là của fitness.
+4. **Có cải thiện cục bộ:** A-SNN nâng Aggregation 0.928 → 0.965 (2/3 seed đạt 0.99 với đúng 7 cụm;
+   trung bình vẫn thấp hơn CDW 0.981 ở README §8). Trên Flame, A-GMM seed 102 đạt 0.971 và A-SNN seed
+   101 đạt 0.828; các seed còn lại sập. A-CA β=0.5 nâng Jain 0.327 → 0.539, nhưng không ổn định
+   (β=0.25 và 0.75 đều tệ hơn base). Chưa có cấu hình nào thắng đồng thời cả bốn bộ.
+5. **§4 (gộp theo BIC) giảm phân mảnh nhưng thừa hưởng thiên lệch Gauss.** Nó đưa Iris từ 6.3 về
+   2 cụm (ARI 0.528 → 0.561) và Jain base từ 7.7 về 4.3 cụm. Nhưng trên Flame nó gộp hai cụm phi
+   Gauss thành một, và xóa các seed A-GMM/A-SNN đã tách đúng. BIC kiểu Gauss không phải tiêu chí gộp
+   an toàn cho dữ liệu phi lồi.
+
+### Hệ quả cho bước tiếp theo
+
+- Với Flame, đầu tư vào **tìm kiếm** chứ không phải công thức. Fitness NKCV-A đã đúng, cần khởi tạo
+  hoặc mutation giúp GA tách được hai cụm dính (ví dụ khởi tạo một phần quần thể từ nhãn DPC hoặc từ
+  ensemble dùng để tính A-CA).
+- Với tầng ngoài §4, thay BIC bằng tiêu chí không giả định Gauss (DBCV hoặc một chỉ số dựa trên
+  liên thông), và chỉ gộp khi tiêu chí cải thiện rõ.
+- Đánh giá tổng quát trên **S1–S4** thay cho việc lấy Iris làm thước đo chính về chồng lấn.
+
 ## 8. Nguồn tham khảo (đã kiểm tra tồn tại; xếp hạng Q theo SJR nên tra lại tại scimagojr.com)
 
 | # | Tài liệu | Nơi đăng | Hạng | Dùng ở |

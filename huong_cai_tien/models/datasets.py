@@ -32,6 +32,14 @@ _DATA_SPECS = {
     "flame": ("flame.txt", 2),              # 240 diem, 2 cum dinh nhau qua eo hep
     "iris": ("iris.txt", 4),                # 150 diem, 3 lop, du lieu tu sklearn
     "jain": ("jain.txt", 2),                # 373 diem, 2 vong cung dai dinh nhau
+    # Nguon: bo benchmark cua Gagolewski (github.com/gagolews/clustering-data-v1),
+    # ban sao cua UCI va SIPU (cs.uef.fi/sipu/datasets); nhan lay tu labels0.
+    "ecoli": ("ecoli.txt", 7),              # 336 diem, 8 lop rat lech (143..2)
+    "glass": ("glass.txt", 9),              # 214 diem, 6 lop, chong lan manh
+    "s1": ("s1.txt", 2),                    # 5000 diem, 15 cum Gauss, chong lan it nhat
+    "s2": ("s2.txt", 2),
+    "s3": ("s3.txt", 2),
+    "s4": ("s4.txt", 2),                    # chong lan nhieu nhat
 }
 
 
@@ -75,6 +83,8 @@ DATASETS = {
     "iris": load_iris_data,
     "jain": load_jain,
 }
+for _name in ("ecoli", "glass", "s1", "s2", "s3", "s4"):
+    DATASETS[_name] = (lambda n=_name: _load_table(n))
 
 
 def n_clusters(labels: np.ndarray) -> int:

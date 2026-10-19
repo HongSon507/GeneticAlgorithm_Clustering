@@ -213,6 +213,30 @@ Trên Aggregation bước gộp không đổi nhãn nào, nên chỉ ghi dòng `
   liên thông), và chỉ gộp khi tiêu chí cải thiện rõ.
 - Đánh giá tổng quát trên **S1–S4** thay cho việc lấy Iris làm thước đo chính về chồng lấn.
 
+## 7c. Tách lỗi tìm kiếm khỏi lỗi fitness: thử gieo quần thể ban đầu
+
+Script: `experiments/run_seeding_test.py`. Gieo 10 cá thể ban đầu từ GMM và k-means với `k = 2..6`
+(không dùng nhãn thật), mỗi cá thể qua `ls_fi` như immigrant thường. Fitness giữ nguyên.
+Seed 100–102, `pop=60`, `gen=80`. A-CA được dùng với `β=0.5`.
+
+| Bộ | Fitness | Khởi tạo ngẫu nhiên | Khởi tạo có gieo | ARI tốt nhất trong các lời giải gieo |
+|---|---|---|---|---|
+| Flame | NKCV2 gốc | 0.013 (3/3 seed sập) | 0.614 (0.923, 0.906, 0.013) | 0.597 |
+| Flame | NKCV-A (A-CA, β=.5) | 0.013 (3/3 seed sập) | **0.933 ± 0.008**, đúng 2 cụm ở cả 3 seed | 0.597 |
+| Jain | NKCV2 gốc | 0.323 | 0.272 | 0.553 |
+| Jain | NKCV-A (A-CA, β=.5) | 0.539 | 0.409 | 0.553 |
+
+Đọc:
+
+- **Flame là lỗi tìm kiếm.** Cùng một fitness NKCV-A, chỉ đổi khởi tạo mà ARI tăng từ 0.013 lên 0.933,
+  ổn định ở cả 3 seed. GA còn vượt xa lời giải gieo tốt nhất (0.597), nên đây là GA + PX + LS thực
+  sự làm việc, không phải chép lại lời giải gieo. Ngay cả NKCV2 gốc cũng đạt 0.92 ở 2/3 seed khi
+  được gieo.
+- **Jain là lỗi fitness.** Gieo không giúp (còn tệ hơn), số cụm vẫn 4.7–9. Mật độ thay đổi dọc theo
+  hai vòng cung khiến NKCV2 thích cắt vòng cung thành nhiều đoạn.
+- **Iris là lỗi xác định được** (§7b): không tiêu chí không giám sát nào đã thử, kể cả GMM-BIC, chọn
+  3 cụm.
+
 ## 8. Nguồn tham khảo (đã kiểm tra tồn tại; xếp hạng Q theo SJR nên tra lại tại scimagojr.com)
 
 | # | Tài liệu | Nơi đăng | Hạng | Dùng ở |

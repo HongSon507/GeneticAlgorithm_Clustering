@@ -1,5 +1,5 @@
 """
-Chan doan cho Ecoli/Glass va S1-S4 (muc 9 cua DE_XUAT_FITNESS_CHONG_LAN.md).
+Chan doan cho Ecoli/Glass va S1-S4 (muc 7d cua DE_XUAT_FITNESS_CHONG_LAN.md).
 
   prep      -- Ecoli/Glass: tien xu ly (Standard hien tai, MinMax, bo cot gan hang
                so / log1p) x (khoi tao ngau nhien, co gieo), NKCV2 goc.

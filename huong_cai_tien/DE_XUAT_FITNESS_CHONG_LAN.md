@@ -237,9 +237,9 @@ Seed 100–102, `pop=60`, `gen=80`. A-CA được dùng với `β=0.5`.
 - **Iris là lỗi xác định được** (§7b): không tiêu chí không giám sát nào đã thử, kể cả GMM-BIC, chọn
   3 cụm.
 
-## 9. Đánh giá trên 10 bộ: tốc độ, gieo quần thể, Ecoli/Glass, S1–S4
+## 7d. Đánh giá trên 10 bộ: tốc độ, gieo quần thể, Ecoli/Glass, S1–S4
 
-### 9.1 Tăng tốc (không đổi thuật toán)
+### 7d.1 Tăng tốc (không đổi thuật toán)
 
 Profile cho thấy nút thắt là `map_solutions` và `fix_labels` trong `src/px.py`, không phải local
 search. `models/fast_px.py` viết lại hai hàm này: ghép nhãn bằng danh sách overlap đã sắp xếp
@@ -251,7 +251,7 @@ search. `models/fast_px.py` viết lại hai hàm này: ghép nhãn bằng danh 
 | S1, N=1000, pop 60, gen 80 | ~30 phút (91 s cho 3 thế hệ) | 6.1 s |
 | S1 đầy đủ, N=5000, pop 60, gen 80 | không khả thi | 36.5 s |
 
-### 9.2 Lưới 4 cấu hình × 10 bộ
+### 7d.2 Lưới 4 cấu hình × 10 bộ
 
 `experiments/run_seeding_grid.py`, seed 100–104, `pop=60`, `gen=80`, `K=3`. S1–S4 dùng mẫu con 1000
 điểm (seed 0). Gieo: 30% quần thể ban đầu và immigrant từ GMM/k-means/DPC với `k = 2..k_max(N)`,
@@ -281,7 +281,7 @@ Gagolewski (bản sao UCI/SIPU). ARI trung bình ± SD (số cụm):
   và tăng `β` lên 0.8 cũng không giúp S2/S3 (vẫn ~7 cụm). Lựa chọn ít rủi ro nhất là **giữ NKCV2 gốc
   + gieo**.
 
-### 9.3 Ecoli/Glass: lỗi tiền xử lý, không phải fitness hay tìm kiếm
+### 7d.3 Ecoli/Glass: lỗi tiền xử lý, không phải fitness hay tìm kiếm
 
 Ecoli có hai cột gần như hằng số: `lip` (2 giá trị, 97% cùng giá trị) và `chg` (335/336 điểm cùng
 giá trị). Sau `StandardScaler`, điểm duy nhất khác ở `chg` cách trung bình ~√335 ≈ 18 SD và chi phối
@@ -301,7 +301,7 @@ khoảng cách bình phương. Glass có `Ba` (82% bằng 0) và `Fe` (67% bằn
 Để đối chiếu, DP-GA-PFCM (Kuo et al. 2023, **cho trước k**) báo Ecoli 0.35–0.44 và Glass 0.16–0.19
 ARI. NK-HGA chỉ cần sửa tiền xử lý đã ngang hoặc hơn, mà không cần biết trước k.
 
-### 9.4 S1–S4: đây mới là điểm yếu chồng lấn thật, và nó nằm ở fitness
+### 7d.4 S1–S4: đây mới là điểm yếu chồng lấn thật, và nó nằm ở fitness
 
 Khác Iris, trên S1/S2 các cụm **xác định được**: GMM-BIC tự chọn k = 15/16 và đạt ARI 0.97/0.93.
 Phép thử A1 so với lời giải GMM 15 cụm (gần tối ưu Bayes):
@@ -319,7 +319,7 @@ chồng lấn không có thung lũng, nên mọi biên đi qua vùng đặc đ�
 
 Đây là giới hạn của cả họ phương pháp mật độ, nhưng NK-HGA kém hơn hai đại diện của họ này:
 
-| Bộ | NK-HGA tốt nhất (§9.2) | HDBSCAN | DBSCAN (trần, eps chọn bằng nhãn thật) | GMM-BIC |
+| Bộ | NK-HGA tốt nhất (§7d.2) | HDBSCAN | DBSCAN (trần, eps chọn bằng nhãn thật) | GMM-BIC |
 |---|---|---|---|---|
 | S1 | 0.905 | 0.872 | 0.916 | 0.974 |
 | S2 | 0.449 | 0.576 | 0.680 | 0.926 |
@@ -329,7 +329,7 @@ chồng lấn không có thung lũng, nên mọi biên đi qua vùng đặc đ�
 Lưu ý: mẫu con 1000 điểm (~67 điểm/cụm) làm ước lượng mật độ thô hơn bản 5000 điểm; với tốc độ hiện
 tại, bản đầy đủ chạy được (~37 s/lần) và nên dùng cho bảng cuối của luận văn.
 
-### 9.5 Kế hoạch đã điều chỉnh theo bằng chứng
+### 7d.5 Kế hoạch đã điều chỉnh theo bằng chứng
 
 1. **Fitness: giữ NKCV2 gốc**, không cố định NKCV-A. NKCV-A chỉ thắng cục bộ (Flame, Glass).
 2. **Tìm kiếm: gieo quần thể** là mặc định (lợi trên 8/10 bộ). Mutation dời đoạn biên chưa làm.

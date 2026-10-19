@@ -237,6 +237,111 @@ Seed 100–102, `pop=60`, `gen=80`. A-CA được dùng với `β=0.5`.
 - **Iris là lỗi xác định được** (§7b): không tiêu chí không giám sát nào đã thử, kể cả GMM-BIC, chọn
   3 cụm.
 
+## 9. Đánh giá trên 10 bộ: tốc độ, gieo quần thể, Ecoli/Glass, S1–S4
+
+### 9.1 Tăng tốc (không đổi thuật toán)
+
+Profile cho thấy nút thắt là `map_solutions` và `fix_labels` trong `src/px.py`, không phải local
+search. `models/fast_px.py` viết lại hai hàm này: ghép nhãn bằng danh sách overlap đã sắp xếp
+(`O(Nc³)` Python → `O(N log N)`) và union-find bằng numba. Đầu ra **trùng từng phần tử** với bản gốc
+(`self_test`), và một lần chạy GA đầy đủ trên Flame cho nhãn cuối trùng khớp.
+
+| Cấu hình | Trước | Sau |
+|---|---|---|
+| S1, N=1000, pop 60, gen 80 | ~30 phút (91 s cho 3 thế hệ) | 6.1 s |
+| S1 đầy đủ, N=5000, pop 60, gen 80 | không khả thi | 36.5 s |
+
+### 9.2 Lưới 4 cấu hình × 10 bộ
+
+`experiments/run_seeding_grid.py`, seed 100–104, `pop=60`, `gen=80`, `K=3`. S1–S4 dùng mẫu con 1000
+điểm (seed 0). Gieo: 30% quần thể ban đầu và immigrant từ GMM/k-means/DPC với `k = 2..k_max(N)`,
+không dùng nhãn thật (`models/seeded_ga.py`). Dữ liệu Ecoli, Glass, S1–S4 lấy từ bộ benchmark của
+Gagolewski (bản sao UCI/SIPU). ARI trung bình ± SD (số cụm):
+
+| Bộ | k thật | base | base+seed | nkcva | nkcva+seed |
+|---|---|---|---|---|---|
+| Flame | 2 | 0.013 (1.8) | 0.741 ± 0.41 (2.4) | 0.013 (1.0) | **0.939** ± 0.00 (2.0) |
+| Aggregation | 7 | 0.871 (5.6) | **0.988** ± 0.00 (7.0) | 0.895 (5.8) | 0.912 (6.0) |
+| Jain | 2 | 0.401 (7.4) | 0.279 (8.0) | **0.414** (3.6) | 0.313 (5.0) |
+| Iris | 3 | 0.526 (5.8) | 0.524 (4.8) | 0.543 (3.0) | 0.547 (2.4) |
+| Ecoli | 8 | 0.037 (2.6) | 0.038 (3.0) | 0.038 (2.0) | 0.038 (2.0) |
+| Glass | 6 | 0.131 (6.2) | 0.164 (6.6) | 0.139 (7.4) | **0.200** (6.4) |
+| S1 | 15 | **0.905** (14.0) | **0.905** (14.0) | 0.806 (13.2) | 0.780 (13.0) |
+| S2 | 15 | **0.449** (8.8) | 0.339 (8.6) | 0.405 (7.4) | 0.442 (7.8) |
+| S3 | 15 | 0.131 (5.2) | **0.313** (7.8) | 0.071 (2.4) | 0.170 (5.6) |
+| S4 | 15 | 0.022 (4.2) | **0.079** (5.6) | 0.025 (3.0) | 0.074 (3.0) |
+
+Đọc:
+
+- **Gieo quần thể là cải tiến đáng tin nhất.** Nó giúp hoặc trung tính trên 8/10 bộ: Aggregation
+  0.871 → 0.988 (đúng 7 cụm ở cả 5 seed), Flame (với NKCV-A) 0.013 → 0.939, S3 0.131 → 0.313, Glass
+  +0.03–0.06. Nó làm hại Jain và S2 với fitness gốc.
+- **NKCV-A không nên cố định làm fitness chung.** Nó thắng Flame và Glass nhưng thua S1 (0.905 →
+  0.806) và Aggregation khi có gieo (0.988 → 0.912). Thay `k_max` của A-CA theo `N` (15 thay vì 10)
+  và tăng `β` lên 0.8 cũng không giúp S2/S3 (vẫn ~7 cụm). Lựa chọn ít rủi ro nhất là **giữ NKCV2 gốc
+  + gieo**.
+
+### 9.3 Ecoli/Glass: lỗi tiền xử lý, không phải fitness hay tìm kiếm
+
+Ecoli có hai cột gần như hằng số: `lip` (2 giá trị, 97% cùng giá trị) và `chg` (335/336 điểm cùng
+giá trị). Sau `StandardScaler`, điểm duy nhất khác ở `chg` cách trung bình ~√335 ≈ 18 SD và chi phối
+khoảng cách bình phương. Glass có `Ba` (82% bằng 0) và `Fe` (67% bằng 0).
+
+`experiments/run_overlap_diagnostics.py prep`, NKCV2 gốc, 3 seed:
+
+| Bộ | Tiền xử lý | Ngẫu nhiên | Gieo |
+|---|---|---|---|
+| Ecoli | Standard (hiện tại) | 0.038 (2.7 cụm) | 0.038 (3.0) |
+| Ecoli | MinMax | 0.443 (5.7) | 0.443 (4.7) |
+| Ecoli | Standard, bỏ `lip`+`chg` | 0.448 (8.3) | **0.454** (8.0) |
+| Glass | Standard (hiện tại) | 0.106 (6.0) | 0.161 (6.7) |
+| Glass | MinMax | 0.180 (6.3) | **0.211** (7.0) |
+| Glass | Standard sau `log1p` | 0.178 (5.0) | 0.189 (5.7) |
+
+Để đối chiếu, DP-GA-PFCM (Kuo et al. 2023, **cho trước k**) báo Ecoli 0.35–0.44 và Glass 0.16–0.19
+ARI. NK-HGA chỉ cần sửa tiền xử lý đã ngang hoặc hơn, mà không cần biết trước k.
+
+### 9.4 S1–S4: đây mới là điểm yếu chồng lấn thật, và nó nằm ở fitness
+
+Khác Iris, trên S1/S2 các cụm **xác định được**: GMM-BIC tự chọn k = 15/16 và đạt ARI 0.97/0.93.
+Phép thử A1 so với lời giải GMM 15 cụm (gần tối ưu Bayes):
+
+| Bộ | GMM-15 ARI | f(GMM-15) | f(GA) | Cụm GA | ARI GA | A1 |
+|---|---|---|---|---|---|---|
+| S1 | 0.974 | 0.00119 | 0.00094 | 14 | 0.905 | FAIL |
+| S2 | 0.928 | 0.00320 | 0.00205 | 9 | 0.324 | FAIL |
+| S3 | 0.708 | 0.00858 | 0.00363 | 10 | 0.446 | FAIL |
+| S4 | 0.675 | 0.01039 | 0.00285 | 5 | 0.039 | FAIL |
+
+NKCV2 xếp lời giải gộp cụm tốt hơn lời giải gần đúng, và khoảng cách tăng theo mức chồng lấn. Cơ chế:
+NKCV2 chỉ cho phép đặt biên ở nơi các láng giềng cách xa nhau (thung lũng mật độ). Các cụm Gauss
+chồng lấn không có thung lũng, nên mọi biên đi qua vùng đặc đều bị phạt và GA gộp cụm.
+
+Đây là giới hạn của cả họ phương pháp mật độ, nhưng NK-HGA kém hơn hai đại diện của họ này:
+
+| Bộ | NK-HGA tốt nhất (§9.2) | HDBSCAN | DBSCAN (trần, eps chọn bằng nhãn thật) | GMM-BIC |
+|---|---|---|---|---|
+| S1 | 0.905 | 0.872 | 0.916 | 0.974 |
+| S2 | 0.449 | 0.576 | 0.680 | 0.926 |
+| S3 | 0.313 | 0.220 | 0.450 | 0.598 |
+| S4 | 0.079 | 0.176 | 0.311 | 0.220 |
+
+Lưu ý: mẫu con 1000 điểm (~67 điểm/cụm) làm ước lượng mật độ thô hơn bản 5000 điểm; với tốc độ hiện
+tại, bản đầy đủ chạy được (~37 s/lần) và nên dùng cho bảng cuối của luận văn.
+
+### 9.5 Kế hoạch đã điều chỉnh theo bằng chứng
+
+1. **Fitness: giữ NKCV2 gốc**, không cố định NKCV-A. NKCV-A chỉ thắng cục bộ (Flame, Glass).
+2. **Tìm kiếm: gieo quần thể** là mặc định (lợi trên 8/10 bộ). Mutation dời đoạn biên chưa làm.
+3. **Tiền xử lý:** dùng MinMax, hoặc loại cột gần hằng số trước khi chuẩn hóa. Đây là sửa đổi rẻ
+   nhất, lợi lớn nhất cho dữ liệu thực nhiều chiều (Ecoli ×12).
+4. **Đánh giá chồng lấn bằng S1–S4** (bản 5000 điểm). Iris chỉ làm phụ lục, kèm ghi chú GMM-BIC chọn
+   2 cụm.
+5. **Chồng lấn kiểu S2–S4 là lỗi fitness có cấu trúc**: NKCV2 định nghĩa cụm là thành phần liên thông
+   mật độ. Nếu muốn giải, phải đổi định nghĩa (ví dụ một số hạng dựa trên mô hình, chỉ áp ở vùng không
+   có thung lũng), không phải chỉnh trọng số. Đây là quyết định phạm vi của luận văn, không phải một
+   tinh chỉnh.
+
 ## 8. Nguồn tham khảo (đã kiểm tra tồn tại; xếp hạng Q theo SJR nên tra lại tại scimagojr.com)
 
 | # | Tài liệu | Nơi đăng | Hạng | Dùng ở |

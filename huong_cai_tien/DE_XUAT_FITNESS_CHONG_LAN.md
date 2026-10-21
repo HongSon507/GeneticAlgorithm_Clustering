@@ -344,6 +344,79 @@ tại, bản đầy đủ chạy được (~37 s/lần) và nên dùng cho bản
    có thung lũng), không phải chỉnh trọng số. Đây là quyết định phạm vi của luận văn, không phải một
    tinh chỉnh.
 
+## 7e. Phiên bản hiện hành, bảng cuối và so sánh với CDW
+
+### 7e.1 Chọn tiền xử lý (10 bộ, 3 seed, bản gieo, S1–S4 mẫu 1000 điểm)
+
+| Bộ | Standard | Standard + bỏ cột gần hằng | **MinMax + bỏ cột gần hằng** |
+|---|---|---|---|
+| Flame | 0.619 ± 0.43 | 0.619 ± 0.43 | **0.923 ± 0.00** |
+| Aggregation | 0.988 | 0.988 | 0.988 |
+| Jain | 0.273 | 0.273 | **0.323** |
+| Iris | 0.523 | 0.523 | **0.544** |
+| Ecoli | 0.038 | **0.454** | 0.437 |
+| Glass | 0.161 | 0.161 | **0.211** |
+| S1 | 0.905 | 0.905 | 0.905 |
+| S2 | 0.324 | 0.324 | **0.392** |
+| S3 | **0.434** | **0.434** | 0.419 |
+| S4 | **0.102** | **0.102** | 0.044 |
+
+MinMax + bỏ cột gần hằng số bằng hoặc tốt hơn trên 8/10 bộ, nên được chọn làm mặc định
+(`models/datasets.py::preprocess`).
+
+### 7e.2 Bảng cuối: bản gốc so với bản hiện hành (10 seed, S1–S4 đủ 5000 điểm)
+
+`experiments/run_final_table.py`. ARI trung bình ± SD (số cụm). HDBSCAN và GMM-BIC chạy một lần,
+cùng tiền xử lý với bản hiện hành.
+
+| Bộ | Gốc | Hiện hành | HDBSCAN | GMM-BIC |
+|---|---|---|---|---|
+| Flame | 0.104 ± 0.27 (1.7) | **0.920 ± 0.01** (2.6) | 0.409 (2) | 0.600 (3) |
+| Aggregation | 0.902 ± 0.05 (6.8) | **0.988 ± 0.00** (7.0) | 0.734 (4) | 0.568 (11) |
+| Jain | 0.377 ± 0.16 (7.8) | 0.316 ± 0.03 (8.9) | **0.931** (2) | 0.293 (5) |
+| Iris | 0.529 ± 0.01 (5.1) | 0.546 ± 0.00 (4.8) | 0.568 (2) | 0.568 (2) |
+| Ecoli | 0.038 ± 0.00 (2.9) | 0.444 ± 0.02 (7.8) | 0.367 (2) | **0.641** (6) |
+| Glass | 0.127 ± 0.04 (5.4) | 0.212 ± 0.00 (6.9) | **0.252** (2) | 0.152 (3) |
+| S1 | 0.429 ± 0.25 (239) | 0.756 ± 0.00 (12) | 0.925 (15) | **0.986** (16) |
+| S2 | 0.207 ± 0.13 (156) | 0.331 ± 0.02 (5.9) | 0.648 (15) | **0.942** (15) |
+| S3 | 0.126 ± 0.14 (269) | 0.033 ± 0.04 (2.0) | 0.166 (17) | **0.731** (15) |
+| S4 | 0.069 ± 0.09 (254) | 0.000 ± 0.00 (1.6) | 0.162 (19) | **0.673** (15) |
+
+Trên S1–S4 bản 5000 điểm, bản gốc chưa hội tụ sau 80 thế hệ (150–270 cụm), còn bản hiện hành gộp
+quá tay (S3/S4 chỉ còn 1–2 cụm). Cả hai đều kém hơn bản mẫu 1000 điểm.
+
+### 7e.3 CDW cũ so với base + gieo, cùng giao thức
+
+`lich_su/experiments/run_cdw_same_protocol.py`. Seed 100–104, S1–S4 mẫu 1000 điểm. CDW chạy như
+lúc đề xuất (Standard, khởi tạo ngẫu nhiên); `CDW+gieo` dùng thêm gieo quần thể và tiền xử lý mới.
+
+| Bộ | Gốc | CDW cũ | Base + gieo (hiện hành) | CDW + gieo |
+|---|---|---|---|---|
+| Flame | 0.013 (1.8) | **0.929** ± 0.02 (3.0) | 0.923 ± 0.00 (2.8) | 0.562 ± 0.13 (3.2) |
+| Aggregation | 0.903 (6.0) | 0.984 (7.0) | **0.988** (7.0) | **0.988** (7.0) |
+| Jain | **0.404** ± 0.23 (7.6) | 0.142 (26.0) | 0.306 (9.0) | 0.176 (23.2) |
+| Iris | 0.526 (5.8) | 0.535 (11.8) | 0.545 (4.8) | **0.597** (8.6) |
+| Ecoli | 0.038 (2.8) | 0.038 (5.0) | 0.440 (7.6) | **0.676** (23.0) |
+| Glass | 0.129 (5.8) | **0.214** (12.2) | 0.211 (6.8) | 0.169 (12.0) |
+| S1 | 0.905 (14.0) | 0.953 (32.0) | 0.905 (14.0) | **0.967** (22.0) |
+| S2 | 0.407 (8.6) | 0.761 (31.0) | 0.416 (8.0) | **0.783** (31.0) |
+| S3 | 0.030 (4.4) | 0.554 (39.8) | 0.398 (9.0) | **0.574** (33.2) |
+| S4 | 0.049 (6.0) | 0.381 (22.0) | 0.047 (5.8) | **0.416** (18.4) |
+| **ARI TB 10 bộ** | 0.340 | 0.549 | 0.518 | **0.591** |
+| **SD TB** | 0.047 | 0.026 | **0.018** | 0.028 |
+
+Đọc:
+
+- **CDW hiệu quả hơn về ARI**, chủ yếu nhờ S2–S4: S2 0.76 so với 0.42, S4 0.38 so với 0.05. Điều
+  này sửa lại nhận định ở 7d.4–7d.5: đổi fitness *có* giúp được dữ liệu chồng lấn. CDW hạ phạt nhánh
+  khác nhãn, nên cho phép đặt biên trong vùng đặc.
+- **Cái giá là phân mảnh.** CDW cho 22–40 cụm trên S-sets (thật là 15), 26 cụm trên Jain (thật là
+  2), 12 trên Glass (thật là 6). ARI vẫn cao vì phần lớn mảnh thừa rất nhỏ, nhưng **số cụm sai**. Đây
+  là điều quan trọng với NK-HGA, vì tự tìm số cụm là điểm mạnh được quảng bá.
+- **Base + gieo ổn định nhất** (SD 0.018) và cho **số cụm gần đúng** trên Flame, Aggregation, Ecoli,
+  Glass. Nhưng nó không giải được chồng lấn (S2–S4).
+- Kết hợp CDW + gieo cho ARI trung bình cao nhất (0.591) nhưng làm Flame tụt (0.56) và vẫn phân mảnh.
+
 ## 8. Nguồn tham khảo (đã kiểm tra tồn tại; xếp hạng Q theo SJR nên tra lại tại scimagojr.com)
 
 | # | Tài liệu | Nơi đăng | Hạng | Dùng ở |

@@ -27,7 +27,7 @@ from ga import NKHGA, renumber
 from nkcv2 import NKCV2Model
 from seeded_ga import SeededNKHGA, build_seed_pool
 from run_seeding_grid import subsample
-from datasets import DATA_DIR, DATASETS
+from datasets_std import DATA_DIR, DATASETS
 
 from sklearn.cluster import DBSCAN, HDBSCAN
 from sklearn.metrics import adjusted_rand_score as ari

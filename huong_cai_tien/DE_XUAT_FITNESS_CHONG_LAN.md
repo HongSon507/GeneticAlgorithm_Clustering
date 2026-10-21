@@ -44,7 +44,7 @@ nhiễu      : giữ nguyên NKCV2
   NKCV2 và CDW không biểu diễn được (điểm 2 ở §0).
 
 Cài đặt: thêm `Mbeta_same`/`Mbeta_diff` theo dạng *cộng* vào `comp_fi_weighted` trong
-`models/weighted_model.py` (hiện kernel chỉ có trọng số *nhân*). Mô hình con chỉ cần tính `A[N, K]`.
+`lich_su/models/weighted_model.py` (hiện kernel chỉ có trọng số *nhân*). Mô hình con chỉ cần tính `A[N, K]`.
 
 ### 1.2 Ba cách tính `A_ij`, xếp từ rẻ đến mạnh
 
@@ -155,8 +155,9 @@ tổng quát hóa mạnh.
 
 ## 7b. Kết quả thực nghiệm §1 (NKCV-A) và §4 (hai tầng)
 
-Mã: `models/nkcv2_affinity.py` (NKCV-A), `models/two_level_merge.py` (gộp theo BIC),
-`experiments/run_nkcva_two_level.py`. Dữ liệu thô: `results/nkcva_two_level_<bộ>.csv`.
+Mã: `lich_su/models/nkcv2_affinity.py` (NKCV-A), `lich_su/models/two_level_merge.py` (gộp
+theo BIC), `lich_su/experiments/run_nkcva_two_level.py`. Dữ liệu thô:
+`lich_su/results/nkcva_two_level_<bộ>.csv`.
 
 Tên trong code: `ca_gmm` = **A-CA** (đồng xuất hiện từ ensemble GMM, k = 2..10, 5 seed mỗi k),
 `gmm` = **A-GMM** (posterior của GMM chọn k theo BIC), `snn` = **A-SNN** (`k = 10`).
@@ -215,7 +216,8 @@ Trên Aggregation bước gộp không đổi nhãn nào, nên chỉ ghi dòng `
 
 ## 7c. Tách lỗi tìm kiếm khỏi lỗi fitness: thử gieo quần thể ban đầu
 
-Script: `experiments/run_seeding_test.py`. Gieo 10 cá thể ban đầu từ GMM và k-means với `k = 2..6`
+Script tạm ban đầu đã được thay bằng `models/seeded_ga.py` và
+`lich_su/experiments/run_seeding_grid.py` (mục 7d.2 lặp lại kết luận này với 5 seed). Gieo 10 cá thể ban đầu từ GMM và k-means với `k = 2..6`
 (không dùng nhãn thật), mỗi cá thể qua `ls_fi` như immigrant thường. Fitness giữ nguyên.
 Seed 100–102, `pop=60`, `gen=80`. A-CA được dùng với `β=0.5`.
 
@@ -253,7 +255,7 @@ search. `models/fast_px.py` viết lại hai hàm này: ghép nhãn bằng danh 
 
 ### 7d.2 Lưới 4 cấu hình × 10 bộ
 
-`experiments/run_seeding_grid.py`, seed 100–104, `pop=60`, `gen=80`, `K=3`. S1–S4 dùng mẫu con 1000
+`lich_su/experiments/run_seeding_grid.py`, seed 100–104, `pop=60`, `gen=80`, `K=3`. S1–S4 dùng mẫu con 1000
 điểm (seed 0). Gieo: 30% quần thể ban đầu và immigrant từ GMM/k-means/DPC với `k = 2..k_max(N)`,
 không dùng nhãn thật (`models/seeded_ga.py`). Dữ liệu Ecoli, Glass, S1–S4 lấy từ bộ benchmark của
 Gagolewski (bản sao UCI/SIPU). ARI trung bình ± SD (số cụm):
@@ -287,7 +289,7 @@ Ecoli có hai cột gần như hằng số: `lip` (2 giá trị, 97% cùng giá 
 giá trị). Sau `StandardScaler`, điểm duy nhất khác ở `chg` cách trung bình ~√335 ≈ 18 SD và chi phối
 khoảng cách bình phương. Glass có `Ba` (82% bằng 0) và `Fe` (67% bằng 0).
 
-`experiments/run_overlap_diagnostics.py prep`, NKCV2 gốc, 3 seed:
+`lich_su/experiments/run_overlap_diagnostics.py prep`, NKCV2 gốc, 3 seed:
 
 | Bộ | Tiền xử lý | Ngẫu nhiên | Gieo |
 |---|---|---|---|

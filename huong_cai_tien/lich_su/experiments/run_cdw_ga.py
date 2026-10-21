@@ -28,8 +28,8 @@ from sklearn.metrics import adjusted_rand_score
 import ga
 from ga import NKHGA
 from nkcv2_cdw import CDWModel, self_test, HAVE_NUMBA
-from datasets import load_flame, n_clusters, n_noise
-from datasets import load_aggregation
+from datasets_std import load_flame, n_clusters, n_noise
+from datasets_std import load_aggregation
 
 DATASETS = {"flame": load_flame, "aggregation": load_aggregation}
 

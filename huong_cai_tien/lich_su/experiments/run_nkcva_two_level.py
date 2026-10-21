@@ -38,7 +38,7 @@ from ga import NKHGA, renumber
 from nkcv2 import NKCV2Model
 from nkcv2_affinity import AffinityNKCV2Model, build_affinity
 from two_level_merge import bic_merge
-from datasets import DATASETS, n_clusters, n_noise
+from datasets_std import DATASETS, n_clusters, n_noise
 
 DEFAULT_VARIANTS = ["base", "ca_gmm@0.25", "ca_gmm@0.5", "ca_gmm@0.75",
                     "gmm@0.5", "snn@0.5"]

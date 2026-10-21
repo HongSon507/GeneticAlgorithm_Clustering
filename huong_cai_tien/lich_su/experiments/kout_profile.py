@@ -48,7 +48,7 @@ from sklearn.datasets import make_blobs
 from sklearn.preprocessing import StandardScaler
 
 from nkcv2 import NKCV2Model
-from datasets import DATASETS as ALL_DATASETS
+from datasets_std import DATASETS as ALL_DATASETS
 
 HUB_FACTOR = 2          # đỉnh "hub" := |R_i| > HUB_FACTOR * K
 TOP_FRACTION = 0.01     # tỉ lệ đỉnh nặng nhất dùng cho w_top1%

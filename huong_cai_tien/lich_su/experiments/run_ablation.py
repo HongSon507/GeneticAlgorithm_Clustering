@@ -47,7 +47,7 @@ import ga as ga_module
 from ga import NKHGA
 from nkcv2 import NKCV2Model
 from ablation_model import AblationCDWModel, self_test
-from datasets import DATASETS
+from datasets_std import DATASETS
 
 # Identical across ALL experiments and both phases (frozen).
 GA_KWARGS = dict(K=3, pop_size=40, max_gen=60)

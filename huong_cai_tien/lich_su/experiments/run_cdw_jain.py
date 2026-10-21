@@ -32,7 +32,7 @@ import ga as ga_module
 from ga import NKHGA
 from nkcv2_cdw import CDWModel
 from run_cdw_ga import CDW_KWARGS
-from datasets import load_jain, n_clusters, n_noise
+from datasets_std import load_jain, n_clusters, n_noise
 
 POP, GEN = 60, 80          # identical to run_cdw_ga.py's A9 defaults
 SEEDS = (100, 101, 102)    # identical seeds used for Flame/Aggregation A9

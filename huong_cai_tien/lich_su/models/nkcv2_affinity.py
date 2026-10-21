@@ -29,12 +29,30 @@ import numpy as np
 import _bootstrap  # noqa: F401  (them src/ vao sys.path)
 
 from nkcv2 import njit, NKCV2Model, _squared_distance_matrix
-from nkcv2_metric import coassociation_dissimilarity
 
 
 # ---------------------------------------------------------------------------
 # Ma tran ai luc A (N x N), tinh mot lan
 # ---------------------------------------------------------------------------
+
+def coassociation_dissimilarity(X, kind="gmm", k_max=10, n_seeds=5, seed=0):
+    from sklearn.cluster import KMeans
+    from sklearn.mixture import GaussianMixture
+    N = X.shape[0]
+    same = np.zeros((N, N))
+    runs = 0
+    for k in range(2, k_max + 1):
+        for s in range(n_seeds):
+            rs = seed * 1000 + k * 37 + s
+            if kind == "gmm":
+                lab = GaussianMixture(k, covariance_type="full", reg_covar=1e-4,
+                                      random_state=rs).fit_predict(X)
+            else:
+                lab = KMeans(k, n_init=1, random_state=rs).fit_predict(X)
+            same += lab[:, None] == lab[None, :]
+            runs += 1
+    return 1.0 - same / runs
+
 
 def gmm_posterior_affinity(X, k_max=10, seed=0):
     from sklearn.mixture import GaussianMixture
@@ -191,7 +209,7 @@ def self_test(X, source="ca_gmm", trials=300, seed=0):
 
 
 if __name__ == "__main__":
-    from datasets import load_iris_data
+    from datasets_std import load_iris_data
     X, _ = load_iris_data()
     for src in ("ca_gmm", "ca_km", "gmm", "snn"):
         print(src, "self-test:", self_test(X, src))

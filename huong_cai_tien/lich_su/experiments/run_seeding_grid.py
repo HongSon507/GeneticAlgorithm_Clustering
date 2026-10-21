@@ -36,7 +36,7 @@ import fast_px
 from ga import NKHGA
 from nkcv2_affinity import AffinityNKCV2Model, build_affinity
 from seeded_ga import SeededNKHGA, build_seed_pool
-from datasets import DATASETS, n_clusters, n_noise
+from datasets_std import DATASETS, n_clusters, n_noise
 
 CONFIGS = ["base", "base+seed", "nkcva", "nkcva+seed"]
 BETA = 0.5

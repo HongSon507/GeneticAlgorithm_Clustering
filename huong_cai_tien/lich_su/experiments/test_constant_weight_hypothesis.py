@@ -31,7 +31,7 @@ from nkcv2 import NKCV2Model
 from weighted_model import WeightedNKCV2Model, check_delta_eval
 from nkcv2_cdw import CDWModel
 from ablation_model import AblationCDWModel
-from datasets import load_flame, n_clusters, n_noise
+from datasets_std import load_flame, n_clusters, n_noise
 
 
 CDW_FIXED = dict(lam=1.0, branches=("diff",), w_min=0.01, w_max=5.0)

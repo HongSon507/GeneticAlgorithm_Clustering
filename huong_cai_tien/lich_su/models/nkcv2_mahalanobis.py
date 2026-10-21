@@ -26,7 +26,7 @@ import numpy as np
 
 from weighted_model import (  # keo theo _bootstrap: sys.path + UTF-8
     WeightedNKCV2Model, NKCV2Model, BRANCHES, HAVE_NUMBA, check_delta_eval)
-from datasets import DATASETS
+from datasets_std import DATASETS
 
 REAL_DATASETS = ("aggregation", "flame", "iris")
 

@@ -8,6 +8,25 @@ trong `models/` và được đưa vào NK-HGA bằng monkeypatch có hoàn nguy
 > Bản Markdown chuyển đổi từ bài báo gốc được giữ riêng tại
 > [`../docs/240203813v(truoc)1.md`](<../docs/240203813v(truoc)1.md>).
 
+## 0. Phiên bản hiện hành (đọc trước)
+
+Bản cải tiến dùng cho bài báo nằm ở `models/improved.py` (`ImprovedNKHGA`):
+
+- **fitness:** NKCV2 gốc, không đổi công thức;
+- **tìm kiếm:** gieo 30% quần thể và immigrant từ GMM / k-means / Density Peaks (`seeded_ga.py`);
+- **hậu xử lý:** gộp mảnh vụn nhỏ hơn `max(K+1, 2% N)` điểm (`fragment_merge.py`);
+- **tốc độ:** `map_solutions` `O(N log N)` và `fix_labels` numba, đầu ra trùng từng bit `src/px.py`
+  (`fast_px.py`);
+- **tiền xử lý:** bỏ cột gần hằng số rồi MinMax (`datasets.preprocess`).
+
+Kết quả chính (5 seed): Flame 0.013 → 0.932, Aggregation 0.903 → 0.988, Ecoli 0.038 → 0.442; trên mô
+hình Gauss có nhiễu của bài báo giữ ARI 0.975 và tỉ lệ đúng số cụm 18% → 60%. Điểm yếu còn lại: Jain và
+dữ liệu chồng lấn mạnh (S2–S4). Bảng đầy đủ, lý do chọn từng thành phần và vì sao CDW không nằm trong
+bản chính: [`DE_XUAT_FITNESS_CHONG_LAN.md`](DE_XUAT_FITNESS_CHONG_LAN.md) mục 7d–7g.
+
+Các mục 1–13 bên dưới mô tả giai đoạn nghiên cứu trước (CDW và các hướng khác); mã và số liệu của
+chúng nằm trong `lich_su/`.
+
 ## 1. Kết luận nghiên cứu
 
 1. Bản tái hiện NK-HGA là đúng và đạt ARI `0.9876`, 7 cụm trên Aggregation.
@@ -505,11 +524,14 @@ huong_cai_tien/
 │   ├── datasets.py                   nạp 10 bộ dữ liệu + preprocess (bỏ cột gần hằng số, MinMax)
 │   ├── fast_px.py                    map_solutions / fix_labels nhanh, đầu ra trùng src/px.py
 │   ├── seeded_ga.py                  gieo quần thể từ GMM / k-means / Density Peaks
-│   └── improved.py                   ImprovedNKHGA = NKCV2 gốc + gieo + PX nhanh
+│   ├── fragment_merge.py             gộp mảnh vụn sau GA
+│   ├── gaussian_model.py             bộ sinh mô hình Gauss có nhiễu (tái tạo theo bài báo)
+│   └── improved.py                   ImprovedNKHGA = NKCV2 gốc + gieo + gộp + PX nhanh
 ├── experiments/
 │   ├── _paths.py
-│   └── run_final_table.py            bảng cuối: bản gốc vs bản cải tiến, 10 bộ, 10 seed
-├── results/                          CSV của run_final_table.py
+│   ├── run_final_table.py            bảng cuối: bản gốc vs bản cải tiến, 10 bộ
+│   └── run_gaussian_noise.py         mô hình Gauss có nhiễu theo giao thức bài báo
+├── results/                          CSV/PNG của phiên bản hiện hành
 └── lich_su/                          các hướng đã thử, giữ để tái lập số liệu (mục 4–13, 7b–7d)
     ├── models/                       CDW (weighted_model, nkcv2_cdw, ablation_model),
     │                                 nkcv2_mahalanobis, nkcv2_persist, nkcv2_affinity (NKCV-A),

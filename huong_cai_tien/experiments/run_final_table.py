@@ -6,7 +6,9 @@ Bang cuoi cho luan van: NK-HGA ban goc so voi ban cai tien, tren 10 bo du lieu.
               `fast_px` duoc bat chi de tang toc: dau ra trung tung phan tu voi
               src/px.py, nen ket qua giong het ban Python.
   cai_tien -- models/improved.py::ImprovedNKHGA (NKCV2 goc + gieo quan the +
-              PX nhanh) tren datasets.preprocess (bo cot gan hang so + MinMax).
+              PX nhanh + gop manh vun) tren datasets.preprocess (bo cot gan hang
+              so + MinMax);
+  cai_tien_truoc_gop -- cung lan chay cai_tien, nhan truoc buoc gop manh vun.
   hdbscan, gmm_bic -- moc tham chieu khong can biet truoc k, cung tien xu ly voi
               cai_tien; chay mot lan moi bo (khong phu thuoc seed GA).
 
@@ -44,7 +46,7 @@ from sklearn.preprocessing import StandardScaler
 
 ORDER = ["flame", "aggregation", "jain", "iris", "ecoli", "glass",
          "s1", "s2", "s3", "s4"]
-METHODS = ["goc", "cai_tien", "hdbscan", "gmm_bic"]
+METHODS = ["goc", "cai_tien_truoc_gop", "cai_tien", "hdbscan", "gmm_bic"]
 FIELDS = ["dataset", "n", "method", "seed", "ari", "n_clusters", "n_noise",
           "runtime_s"]
 
@@ -85,9 +87,11 @@ def run_dataset(name, args, writer, fh):
         finally:
             fast_px.uninstall()
         t0 = time.time()
-        lab = ImprovedNKHGA(pool=pool, pop_size=args.pop, max_gen=args.gen,
-                            random_state=seed).fit_predict(X_new)
-        emit("cai_tien", seed, lab, time.time() - t0)
+        est = ImprovedNKHGA(pool=pool, pop_size=args.pop, max_gen=args.gen,
+                            random_state=seed).fit(X_new)
+        dt = time.time() - t0
+        emit("cai_tien_truoc_gop", seed, est.labels_before_merge_, dt)
+        emit("cai_tien", seed, est.labels_, dt)
 
     if not args.no_refs:
         t0 = time.time()

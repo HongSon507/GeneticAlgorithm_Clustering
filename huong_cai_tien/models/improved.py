@@ -2,9 +2,7 @@
 NK-HGA cai tien -- phien ban hien hanh cua nhanh huong_cai_tien.
 
 So voi ban tai hien bai bao trong src/ (KHONG bi sua):
-  * fitness: CDW (nkcv2_cdw.py, cau hinh A9: chi nhanh khac nhan, lam=1,
-    w_min=0.01, w_max=5) -- NKCV2 voi trong so canh tinh, giu nguyen tinh dung
-    cua PX va Delta Evaluation; `fitness="nkcv2"` de dung NKCV2 goc;
+  * fitness: NKCV2 goc (src/nkcv2.py), khong them so hang nao;
   * tim kiem: gieo 30% quan the ban dau va immigrant tu GMM / k-means / Density
     Peaks voi k = 2..k_max(N), khong dung nhan that (seeded_ga.py);
   * hau xu ly: gop manh vun (fragment_merge.py) de keo so cum ve dung;
@@ -18,7 +16,9 @@ Dung:
     est.labels_                  # sau khi gop manh vun
     est.labels_before_merge_     # nhan GA truoc khi gop
 
-Ly do chon tung thanh phan: ../DE_XUAT_FITNESS_CHONG_LAN.md muc 7d-7f.
+Ly do chon tung thanh phan, va vi sao CDW khong nam trong ban chinh (no thang
+du lieu chong lan nhung xe cum thua tren mo hinh Gauss co nhieu cua bai bao):
+../DE_XUAT_FITNESS_CHONG_LAN.md muc 7d-7g.
 """
 
 from __future__ import annotations
@@ -33,35 +33,26 @@ from datasets import preprocess  # noqa: F401  (tai xuat cho nguoi dung)
 from fragment_merge import merge_fragments
 from ga import renumber
 from nkcv2 import NKCV2Model
-from nkcv2_cdw import CDWModel
 from seeded_ga import SeededNKHGA, build_seed_pool
-
-CDW_KWARGS = dict(lam=1.0, branches=("diff",), w_min=0.01, w_max=5.0)
 
 
 class ImprovedNKHGA(SeededNKHGA):
-    """NKHGA (src/ga.py) + fitness CDW + gieo quan the + PX nhanh + gop manh vun.
+    """NKHGA (src/ga.py) + gieo quan the + PX nhanh + gop manh vun; fitness NKCV2.
 
     Kho loi giai gieo duoc dung trong `fit` neu khong truyen `pool`.
-    Mac dinh pop_size=60, max_gen=80: giao thuc dung trong muc 7b-7f.
+    Mac dinh pop_size=60, max_gen=80: giao thuc dung trong muc 7b-7g.
     """
 
     def __init__(self, pool=None, seed_frac=0.3, pop_size=60, max_gen=80,
-                 fitness="cdw", merge=True, **kw):
+                 merge=True, **kw):
         super().__init__(pool=pool, seed_frac=seed_frac, pop_size=pop_size,
                          max_gen=max_gen, **kw)
-        self.fitness = fitness
         self.merge = merge
 
-    def _make_model(self, X):
-        if self.fitness == "cdw":
-            return CDWModel(X, K=self.K, **CDW_KWARGS)
-        return NKCV2Model(X, K=self.K)
-
     def fit(self, X):
-        model = self._make_model(np.ascontiguousarray(X, dtype=np.float64))
+        model = NKCV2Model(np.ascontiguousarray(X, dtype=np.float64), K=self.K)
         original = ga.NKCV2Model
-        ga.NKCV2Model = lambda Xx, K=3: model
+        ga.NKCV2Model = lambda Xx, K=3: model  # dung chung model voi buoc gop
         fast_px.install()
         try:
             if not self.pool:

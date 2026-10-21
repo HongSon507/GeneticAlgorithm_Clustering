@@ -470,6 +470,63 @@ từ 44% lên 72%.
 Hệ quả: **chưa có cấu hình nào thắng trên mọi loại dữ liệu.** CDW thắng chồng lấn (S2–S4), NKCV2 thắng
 Gauss tách rời có nhiễu, Jain và giữ đúng số cụm.
 
+## 7g. Chốt phiên bản hiện hành (hướng A)
+
+Quyết định: **NKCV2 gốc + gieo quần thể + gộp mảnh vụn + PX nhanh + tiền xử lý (bỏ cột gần hằng số,
+MinMax)**. CDW quay về `lich_su/` vì nó làm giảm ARI trên mô hình Gauss có nhiễu của bài báo (7f).
+Các bảng cũ ở 7e được chuyển sang `lich_su/results/ban_cu_final_table_*.csv`.
+
+Đóng góp giữ lại cho bài báo:
+
+| Đóng góp | Bằng chứng | Vai trò |
+|---|---|---|
+| Gieo quần thể + gộp mảnh vụn | Flame 0.013 → 0.932; Aggregation 0.903 → 0.988; Gauss của bài báo giữ ARI 0.975, đúng số cụm 18% → 60% | đóng góp chính: sửa giới hạn bài báo tự nêu, không làm hỏng điểm mạnh |
+| PX `O(N log N)` | trùng từng bit với `src/px.py`; S1 N=5000 chạy 37 s | đóng góp phụ: khả năng mở rộng |
+| Chẩn đoán NKCV2 | A1 so với nhãn thật và lời giải GMM (7c, 7d.4) | phần phân tích |
+| Tiền xử lý | Ecoli 0.038 → 0.442 | chi tiết thực nghiệm |
+
+### Bảng cuối với bản đã chốt (5 seed; S1–S4 mẫu 1000 điểm)
+
+`experiments/run_final_table.py`. ARI trung bình ± SD (số cụm). `trước gộp` là cùng lần chạy, nhãn GA
+trước bước gộp mảnh vụn.
+
+| Bộ (k thật) | Gốc | Cải tiến, trước gộp | **Cải tiến** | HDBSCAN | GMM-BIC |
+|---|---|---|---|---|---|
+| Flame (2) | 0.013 (1.8) | 0.923 (2.8) | **0.932** (2.0) | 0.409 (2) | 0.600 (3) |
+| Aggregation (7) | 0.903 ± 0.05 (6.0) | 0.988 (7.0) | **0.988** (7.0) | 0.734 (4) | 0.568 (11) |
+| Jain (2) | 0.404 ± 0.20 (7.6) | 0.306 (9.0) | 0.308 (7.6) | **0.931** (2) | 0.293 (5) |
+| Iris (3) | 0.526 (5.8) | 0.545 (4.8) | 0.559 (2.8) | **0.568** (2) | **0.568** (2) |
+| Ecoli (8) | 0.038 (2.8) | 0.440 (7.6) | 0.442 (2.4) | 0.367 (2) | **0.641** (6) |
+| Glass (6) | 0.129 (5.8) | **0.211** (6.8) | 0.205 (3.0) | **0.252** (2) | 0.152 (3) |
+| S1 (15) | 0.905 (14.0) | 0.905 (14.0) | 0.905 (14.0) | 0.875 (15) | **0.976** (15) |
+| S2 (15) | 0.407 (8.6) | 0.416 (8.0) | 0.416 (8.0) | 0.563 (15) | **0.880** (14) |
+| S3 (15) | 0.030 (4.4) | 0.398 (9.0) | 0.399 (7.2) | 0.219 (15) | **0.604** (11) |
+| S4 (15) | 0.049 (6.0) | 0.047 (5.8) | 0.047 (3.6) | 0.183 (15) | **0.550** (11) |
+
+Mô hình Gauss có nhiễu, Nc = 2, l = 2 (9 bộ × 5 seed, `experiments/run_gaussian_noise.py`):
+
+| Phương pháp | ARI | Số cụm TB | Đúng 2 cụm |
+|---|---|---|---|
+| Gốc | 0.977 ± 0.010 | 4.78 | 18% |
+| Cải tiến, trước gộp | 0.976 ± 0.013 | 4.82 | 31% |
+| **Cải tiến** | 0.975 ± 0.012 | **2.40** | **60%** |
+| HDBSCAN | 0.981 ± 0.005 | 2.00 | 100% |
+| GMM-BIC | 0.901 ± 0.217 | 2.11 | 89% |
+
+Đọc:
+
+- Bản cải tiến **không thua bản gốc trên bộ nào trừ Jain** (0.404 → 0.308; bản gốc dao động mạnh,
+  SD 0.20). Thắng rõ trên Flame, Aggregation, Ecoli, Glass, S3; giữ nguyên ARI trên dữ liệu Gauss của
+  bài báo.
+- **Gộp mảnh vụn** kéo số cụm về gần đúng trên Flame, Iris, dữ liệu Gauss. Nhưng nó **gộp quá tay trên
+  dữ liệu thực có lớp rất nhỏ**: Ecoli 7.6 → 2.4 cụm (thật 8, trong đó ba lớp chỉ có 5, 2, 2 điểm) và
+  Glass 6.8 → 3.0 (thật 6). ARI gần như không đổi, nhưng số cụm sai. Cần nêu là giới hạn, hoặc xét lại
+  ngưỡng 2% cho N nhỏ.
+- HDBSCAN thắng Jain và tìm đúng số cụm trên dữ liệu Gauss; GMM-BIC thắng S1–S4. Hai mốc này phải có
+  trong bài báo.
+- Đây là kết quả 5 seed, chọn theo trung bình. Bài báo cần theo giao thức gốc: 25 lần chạy, chọn lời
+  giải bằng DBCV, kiểm định Wilcoxon/Friedman, đủ 144 bộ Gauss.
+
 ## 8. Nguồn tham khảo (đã kiểm tra tồn tại; xếp hạng Q theo SJR nên tra lại tại scimagojr.com)
 
 | # | Tài liệu | Nơi đăng | Hạng | Dùng ở |

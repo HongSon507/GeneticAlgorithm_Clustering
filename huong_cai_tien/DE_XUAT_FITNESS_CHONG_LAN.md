@@ -417,6 +417,59 @@ lúc đề xuất (Standard, khởi tạo ngẫu nhiên); `CDW+gieo` dùng thêm
   Glass. Nhưng nó không giải được chồng lấn (S2–S4).
 - Kết hợp CDW + gieo cho ARI trung bình cao nhất (0.591) nhưng làm Flame tụt (0.56) và vẫn phân mảnh.
 
+## 7f. CDW + gieo + gộp mảnh vụn, và thử trên mô hình Gauss có nhiễu
+
+### 7f.1 Gộp mảnh vụn (`models/fragment_merge.py`)
+
+Mảnh vụn là cụm có ít hơn `τ = max(K+1, ⌈2% N⌉)` điểm (cùng tinh thần quy tắc 2% chọn `dc`). Từ
+mảnh nhỏ nhất, cả mảnh được gán cho nhãn chiếm đa số trong các láng giềng Gep của nó (ưu tiên cụm
+không phải mảnh vụn); mảnh cô lập thành nhiễu. Chạy sau GA nên không ảnh hưởng PX hay Delta
+Evaluation. Thử nhanh CDW + gieo, 1 seed (trước → sau khi gộp):
+
+| Bộ | ARI | Số cụm (thật) |
+|---|---|---|
+| S1 | 0.964 → 0.976 | 24 → **15** (15) |
+| S2 | 0.788 → 0.824 | 34 → 13 (15) |
+| S3 | 0.586 → 0.603 | 34 → 12 (15) |
+| Iris | 0.621 → 0.669 | 9 → 4 (3) |
+| Ecoli | 0.700 → 0.747 | 25 → 5 (8) |
+| Glass | 0.163 → 0.151 | 11 → **6** (6) |
+| Jain | 0.157 → 0.167 | 22 → 10 (2) |
+
+### 7f.2 Mô hình Gauss có nhiễu (`models/gaussian_model.py`, `experiments/run_gaussian_noise.py`)
+
+Bản tái tạo bộ sinh của bài báo (mục V-A1) theo Milligan (1981); kho mã của tác giả không kèm bộ
+sinh. Nc = 2, l = 2, N = 800, 1% nhiễu đều, 3 mức cân bằng × 3 bộ = 9 bộ, 5 seed.
+
+| Phương pháp | ARI | Số cụm TB | Đúng 2 cụm |
+|---|---|---|---|
+| Gốc | **0.977 ± 0.010** | 4.78 | 18% |
+| CDW + gieo + gộp (trước gộp) | 0.875 ± 0.145 | 12.3 | 2% |
+| CDW + gieo + gộp | 0.820 ± 0.217 | 2.84 | 33% |
+| HDBSCAN | 0.981 ± 0.005 | 2.00 | 100% |
+| GMM-BIC | 0.901 ± 0.217 | 2.11 | 89% |
+
+Bản gốc đạt 0.977, khớp mốc của bài báo (0.96 ± 0.03, Bảng V): bộ sinh tái tạo đúng chế độ dữ liệu.
+Hình: `results/gaussian_noise_nc2_l2.png`.
+
+Tách thành phần (9 bộ × 2 seed):
+
+| Cấu hình | ARI | Số cụm TB | Đúng 2 cụm |
+|---|---|---|---|
+| NKCV2 gốc, Standard | 0.976 ± 0.012 | 4.83 | 44% |
+| **NKCV2 + gieo + gộp**, Standard | **0.975 ± 0.010** | **2.33** | **72%** |
+| NKCV2 + gieo + gộp, MinMax | 0.975 ± 0.013 | 2.39 | 61% |
+| CDW, không gieo, không gộp | 0.888 ± 0.094 | 13.6 | 0% |
+| CDW + gộp, không gieo | 0.815 ± 0.214 | 2.61 | 39% |
+
+**CDW là nguyên nhân giảm ARI** trên dữ liệu Gauss tách rời có nhiễu, đúng loại dữ liệu bài báo nói
+NK-HGA mạnh nhất. CDW xé cụm thưa thành các mảnh lớn (cùng kiểu lỗi với Jain), và bước gộp không sửa
+được vì các mảnh không nhỏ. NKCV2 + gieo + gộp giữ nguyên ARI của bài báo và tăng tỉ lệ đúng số cụm
+từ 44% lên 72%.
+
+Hệ quả: **chưa có cấu hình nào thắng trên mọi loại dữ liệu.** CDW thắng chồng lấn (S2–S4), NKCV2 thắng
+Gauss tách rời có nhiễu, Jain và giữ đúng số cụm.
+
 ## 8. Nguồn tham khảo (đã kiểm tra tồn tại; xếp hạng Q theo SJR nên tra lại tại scimagojr.com)
 
 | # | Tài liệu | Nơi đăng | Hạng | Dùng ở |

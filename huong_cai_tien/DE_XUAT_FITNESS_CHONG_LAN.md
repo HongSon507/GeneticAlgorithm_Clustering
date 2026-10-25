@@ -527,6 +527,73 @@ Mô hình Gauss có nhiễu, Nc = 2, l = 2 (9 bộ × 5 seed, `experiments/run_g
 - Đây là kết quả 5 seed, chọn theo trung bình. Bài báo cần theo giao thức gốc: 25 lần chạy, chọn lời
   giải bằng DBCV, kiểm định Wilcoxon/Friedman, đủ 144 bộ Gauss.
 
+## 7h. NKCV-M: định nghĩa cụm theo đỉnh mật độ (hướng chốt)
+
+Hướng chốt: **gieo quần thể + tiền xử lý + fitness NKCV-M** (`models/nkcv2_mode.py`). PX nhanh và gộp
+mảnh vụn giữ làm thành phần phụ; bảng ghi cả trước và sau bước gộp.
+
+### 7h.1 Đỉnh có ý nghĩa theo đơn vị nhiễu
+
+ToMATo trên đồ thị kNN đối xứng (k = 10), độ sâu yên ngựa đo bằng
+`z = (ρ_thô(đỉnh) − ρ_thô(yên ngựa)) / √ρ_thô(đỉnh)`; giữ đỉnh khi `z > 2`. Lý do: persistence tuyệt
+đối đánh giá thấp cụm thưa thật; persistence tương đối tạo đỉnh giả ở vùng thưa (Gauss cân bằng 2:
+1.0; 0.92; 0.84…). Chia cho √ρ đưa độ sâu về đơn vị nhiễu Poisson của mật độ đếm.
+
+| Bộ | Số đỉnh (z > 2) | Thật |
+|---|---|---|
+| S1 / S2 / S3 / S4 (mẫu 1000) | 15 / 15 / 14 / 13 | 15 |
+| Aggregation / Jain / Iris | 7 / 2 / 2 | 7 / 2 / 3 |
+| Flame | 1 (z = 1.8) | 2 |
+| Gauss có nhiễu Nc = 2 | 2 ở 8/9 bộ | 2 |
+
+### 7h.2 Hàm mục tiêu
+
+Trên cạnh Gep vượt yên ngựa giữa hai đỉnh có ý nghĩa: cùng nhãn → `ρ_j`, khác nhãn → `0`. Mọi cạnh
+khác giữ NKCV2. Không thêm số hạng; `z0=None` trùng NKCV2. `self_test`: trùng NKCV2 khi tắt, Delta
+Evaluation khớp, PX trả fitness đúng và con không tệ hơn cha mẹ, `fix_labels` giữ fitness.
+
+### 7h.3 Kết quả (5 seed; S1–S4 mẫu 1000 điểm)
+
+`experiments/run_final_table.py`. `NKCV2+gieo` là bản chốt ở 7g; `ToMATo` là chính các lưu vực đỉnh mà
+NKCV-M dùng.
+
+| Bộ (k thật) | Gốc | NKCV2 + gieo | **NKCV-M + gieo** | ToMATo (z>2) | HDBSCAN | GMM-BIC |
+|---|---|---|---|---|---|---|
+| Flame (2) | 0.013 (1.8) | **0.932** (2.0) | **0.932** (2.0) | 0.000 (1) | 0.409 (2) | 0.600 (3) |
+| Aggregation (7) | 0.903 (6.0) | 0.988 (7.0) | **0.997** (7.0) | 0.991 (7) | 0.734 (4) | 0.568 (11) |
+| Jain (2) | 0.404 (7.6) | 0.308 (7.6) | 0.322 (8.8) | 0.621 (2) | **0.931** (2) | 0.293 (5) |
+| Iris (3) | 0.526 (5.8) | 0.559 (2.8) | 0.559 (2.8) | **0.568** (2) | **0.568** (2) | **0.568** (2) |
+| Ecoli (8) | 0.038 (2.8) | 0.442 (2.4) | 0.473 (2.4) | 0.317 (2) | 0.367 (2) | **0.641** (6) |
+| Glass (6) | 0.129 (5.8) | 0.205 (3.0) | 0.205 (3.0) | 0.000 (1) | **0.252** (2) | 0.152 (3) |
+| S1 (15) | 0.905 (14.0) | 0.905 (14.0) | **0.975** (15.0) | 0.958 (15) | 0.875 (15) | **0.976** (15) |
+| S2 (15) | 0.407 (8.6) | 0.416 (8.0) | **0.888** (15.0) | 0.862 (15) | 0.563 (15) | 0.880 (14) |
+| S3 (15) | 0.030 (4.4) | 0.399 (7.2) | 0.599 (13.0) | 0.568 (14) | 0.219 (15) | **0.604** (11) |
+| S4 (15) | 0.049 (6.0) | 0.047 (3.6) | **0.546** (14.4) | 0.483 (13) | 0.183 (15) | **0.550** (11) |
+
+Mô hình Gauss có nhiễu, Nc = 2, l = 2 (9 bộ × 5 seed):
+
+| Phương pháp | ARI | Số cụm TB | Đúng 2 cụm |
+|---|---|---|---|
+| Gốc | 0.977 ± 0.010 | 4.78 | 18% |
+| NKCV2 + gieo | 0.975 ± 0.012 | 2.40 | 60% |
+| **NKCV-M + gieo** | 0.976 ± 0.011 | 2.36 | **64%** |
+| ToMATo (z > 2) | 0.869 ± 0.307 | 1.89 | 89% |
+| HDBSCAN | 0.981 ± 0.005 | 2.00 | 100% |
+| GMM-BIC | 0.901 ± 0.217 | 2.11 | 89% |
+
+Đọc:
+
+- **Chồng lấn được giải mà không làm hỏng dữ liệu Gauss của bài báo.** S2 0.407 → 0.888, S3 0.030 →
+  0.599, S4 0.049 → 0.546, ngang GMM-BIC (mô hình đúng giả định của dữ liệu). Số cụm 13–15 so với 15
+  thật. Dữ liệu Gauss có nhiễu giữ ARI 0.976, đúng số cụm 18% → 64%. CDW không làm được điều này (7f).
+- **NK-HGA vượt chính các lưu vực đỉnh** trên S1–S4, Aggregation, Ecoli và Gauss (ToMATo 0.869 ±
+  0.307): phần tối ưu hóa có đóng góp thật, không chỉ chép lại lưu vực.
+- **Còn yếu:** Jain (0.322; ToMATo 0.621 và HDBSCAN 0.931 đều hơn — GA làm tệ đi so với đầu vào lưu
+  vực), Glass (số cụm 3 so với 6), và Flame chỉ đúng nhờ gieo (z = 1.8 nên không có đỉnh thứ hai).
+- Bước gộp mảnh vụn chủ yếu sửa số cụm (S2 20.2 → 15.0; S4 28.2 → 14.4), ARI gần như không đổi.
+- Kết quả 5 seed, chưa theo giao thức đầy đủ của bài báo (25 lần chạy, chọn bằng DBCV, 144 bộ Gauss,
+  kiểm định thống kê).
+
 ## 8. Nguồn tham khảo (đã kiểm tra tồn tại; xếp hạng Q theo SJR nên tra lại tại scimagojr.com)
 
 | # | Tài liệu | Nơi đăng | Hạng | Dùng ở |

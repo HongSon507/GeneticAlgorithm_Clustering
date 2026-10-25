@@ -12,17 +12,18 @@ trong `models/` và được đưa vào NK-HGA bằng monkeypatch có hoàn nguy
 
 Bản cải tiến dùng cho bài báo nằm ở `models/improved.py` (`ImprovedNKHGA`):
 
-- **fitness:** NKCV2 gốc, không đổi công thức;
-- **tìm kiếm:** gieo 30% quần thể và immigrant từ GMM / k-means / Density Peaks (`seeded_ga.py`);
-- **hậu xử lý:** gộp mảnh vụn nhỏ hơn `max(K+1, 2% N)` điểm (`fragment_merge.py`);
-- **tốc độ:** `map_solutions` `O(N log N)` và `fix_labels` numba, đầu ra trùng từng bit `src/px.py`
-  (`fast_px.py`);
-- **tiền xử lý:** bỏ cột gần hằng số rồi MinMax (`datasets.preprocess`).
+- **fitness NKCV-M** (`nkcv2_mode.py`): cụm được định nghĩa theo đỉnh mật độ có ý nghĩa (ToMATo,
+  độ sâu yên ngựa theo đơn vị nhiễu, z > 2); trên cạnh vượt yên ngựa, gộp hai đỉnh bị phạt và cắt
+  không bị phạt; mọi cạnh khác giữ NKCV2;
+- **gieo** 30% quần thể và immigrant từ GMM / k-means / Density Peaks (`seeded_ga.py`);
+- **tiền xử lý:** bỏ cột gần hằng số rồi MinMax (`datasets.preprocess`);
+- phụ: gộp mảnh vụn sau GA (`fragment_merge.py`); PX `O(N log N)` trùng từng bit `src/px.py`
+  (`fast_px.py`).
 
-Kết quả chính (5 seed): Flame 0.013 → 0.932, Aggregation 0.903 → 0.988, Ecoli 0.038 → 0.442; trên mô
-hình Gauss có nhiễu của bài báo giữ ARI 0.975 và tỉ lệ đúng số cụm 18% → 60%. Điểm yếu còn lại: Jain và
-dữ liệu chồng lấn mạnh (S2–S4). Bảng đầy đủ, lý do chọn từng thành phần và vì sao CDW không nằm trong
-bản chính: [`DE_XUAT_FITNESS_CHONG_LAN.md`](DE_XUAT_FITNESS_CHONG_LAN.md) mục 7d–7g.
+Kết quả chính (5 seed, so với `src/`): Flame 0.013 → 0.932; Aggregation 0.903 → 0.997; S2 0.407 →
+0.888; S3 0.030 → 0.599; S4 0.049 → 0.546; Ecoli 0.038 → 0.473; mô hình Gauss có nhiễu giữ ARI
+0.976, đúng số cụm 18% → 64%. Còn yếu: Jain. Bảng đầy đủ:
+[`DE_XUAT_FITNESS_CHONG_LAN.md`](DE_XUAT_FITNESS_CHONG_LAN.md) mục 7h.
 
 Các mục 1–13 bên dưới mô tả giai đoạn nghiên cứu trước (CDW và các hướng khác); mã và số liệu của
 chúng nằm trong `lich_su/`.
@@ -524,9 +525,10 @@ huong_cai_tien/
 │   ├── datasets.py                   nạp 10 bộ dữ liệu + preprocess (bỏ cột gần hằng số, MinMax)
 │   ├── fast_px.py                    map_solutions / fix_labels nhanh, đầu ra trùng src/px.py
 │   ├── seeded_ga.py                  gieo quần thể từ GMM / k-means / Density Peaks
+│   ├── nkcv2_mode.py                 fitness NKCV-M (định nghĩa cụm theo đỉnh mật độ)
 │   ├── fragment_merge.py             gộp mảnh vụn sau GA
 │   ├── gaussian_model.py             bộ sinh mô hình Gauss có nhiễu (tái tạo theo bài báo)
-│   └── improved.py                   ImprovedNKHGA = NKCV2 gốc + gieo + gộp + PX nhanh
+│   └── improved.py                   ImprovedNKHGA = NKCV-M + gieo + gộp + PX nhanh
 ├── experiments/
 │   ├── _paths.py
 │   ├── run_final_table.py            bảng cuối: bản gốc vs bản cải tiến, 10 bộ

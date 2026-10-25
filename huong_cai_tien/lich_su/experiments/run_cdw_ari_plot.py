@@ -36,7 +36,7 @@ import ga as ga_module
 from ga import NKHGA
 from nkcv2_cdw import CDWModel
 from run_cdw_ga import CDW_KWARGS
-from datasets import DATASETS, n_clusters, n_noise
+from datasets_std import DATASETS, n_clusters, n_noise
 
 # Thu tu cot: xep theo ket qua cua CDW (thang -> hoa -> thua) de hinh doc duoc
 # tu trai sang phai nhu mot cau chuyen.

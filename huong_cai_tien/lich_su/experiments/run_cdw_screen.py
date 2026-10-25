@@ -26,7 +26,7 @@ import _paths  # noqa: F401  (them src/ + models/ vao sys.path)
 
 from ga import NKHGA
 from nkcv2_cdw import CDWModel, self_test, HAVE_NUMBA
-from datasets import DATASETS as ALL_DATASETS
+from datasets_std import DATASETS as ALL_DATASETS
 
 DATASETS = {k: ALL_DATASETS[k] for k in ("aggregation", "flame", "iris")}
 

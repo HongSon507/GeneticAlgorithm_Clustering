@@ -8,6 +8,26 @@ trong `models/` và được đưa vào NK-HGA bằng monkeypatch có hoàn nguy
 > Bản Markdown chuyển đổi từ bài báo gốc được giữ riêng tại
 > [`../docs/240203813v(truoc)1.md`](<../docs/240203813v(truoc)1.md>).
 
+## 0. Phiên bản hiện hành (đọc trước)
+
+Bản cải tiến dùng cho bài báo nằm ở `models/improved.py` (`ImprovedNKHGA`):
+
+- **fitness NKCV-M** (`nkcv2_mode.py`): cụm được định nghĩa theo đỉnh mật độ có ý nghĩa (ToMATo,
+  độ sâu yên ngựa theo đơn vị nhiễu, z > 2); trên cạnh vượt yên ngựa, gộp hai đỉnh bị phạt và cắt
+  không bị phạt; mọi cạnh khác giữ NKCV2;
+- **gieo** 30% quần thể và immigrant từ GMM / k-means / Density Peaks (`seeded_ga.py`);
+- **tiền xử lý:** bỏ cột gần hằng số rồi MinMax (`datasets.preprocess`);
+- phụ: gộp mảnh vụn sau GA (`fragment_merge.py`); PX `O(N log N)` trùng từng bit `src/px.py`
+  (`fast_px.py`).
+
+Kết quả chính (5 seed, so với `src/`): Flame 0.013 → 0.932; Aggregation 0.903 → 0.997; S2 0.407 →
+0.888; S3 0.030 → 0.599; S4 0.049 → 0.546; Ecoli 0.038 → 0.473; mô hình Gauss có nhiễu giữ ARI
+0.976, đúng số cụm 18% → 64%. Còn yếu: Jain. Bảng đầy đủ:
+[`DE_XUAT_FITNESS_CHONG_LAN.md`](DE_XUAT_FITNESS_CHONG_LAN.md) mục 7h.
+
+Các mục 1–13 bên dưới mô tả giai đoạn nghiên cứu trước (CDW và các hướng khác); mã và số liệu của
+chúng nằm trong `lich_su/`.
+
 ## 1. Kết luận nghiên cứu
 
 1. Bản tái hiện NK-HGA là đúng và đạt ARI `0.9876`, 7 cụm trên Aggregation.
@@ -363,7 +383,7 @@ Ba seed `100,101,102`, `pop=60`, `gen=80`:
 - Iris: ARI tăng nhẹ nhưng số cụm tăng gần gấp đôi; đây không phải cải thiện cấu trúc.
 - Jain: thua cả 3 seed và phân mảnh 26–27 cụm; CDW không tổng quát hóa.
 
-Hình tổng kết: [`results/cdw_ari_4datasets.png`](results/cdw_ari_4datasets.png).
+Hình tổng kết: [`lich_su/results/cdw_ari_4datasets.png`](lich_su/results/cdw_ari_4datasets.png).
 
 ## 9. Ablation tám biến thể
 
@@ -499,56 +519,69 @@ toàn giữa phần cứng; thí nghiệm nghiên cứu dùng số thế hệ c�
 ```text
 huong_cai_tien/
 ├── README.md                         tài liệu tổng hợp này
-├── models/                           model và hạ tầng hàm mục tiêu
-│   ├── _bootstrap.py
-│   ├── datasets.py
-│   ├── weighted_model.py
-│   ├── nkcv2_cdw.py
-│   ├── nkcv2_persist.py
-│   ├── nkcv2_mahalanobis.py
-│   └── ablation_model.py
-├── experiments/                      screening, GA, ablation và kiểm thử
+├── DE_XUAT_FITNESS_CHONG_LAN.md      đề xuất + bằng chứng cho phiên bản hiện hành (mục 7b–7e)
+├── models/                           PHIÊN BẢN HIỆN HÀNH
+│   ├── _bootstrap.py                 chèn src/ và models/ vào sys.path
+│   ├── datasets.py                   nạp 10 bộ dữ liệu + preprocess (bỏ cột gần hằng số, MinMax)
+│   ├── fast_px.py                    map_solutions / fix_labels nhanh, đầu ra trùng src/px.py
+│   ├── seeded_ga.py                  gieo quần thể từ GMM / k-means / Density Peaks
+│   ├── nkcv2_mode.py                 fitness NKCV-M (định nghĩa cụm theo đỉnh mật độ)
+│   ├── fragment_merge.py             gộp mảnh vụn sau GA
+│   ├── gaussian_model.py             bộ sinh mô hình Gauss có nhiễu (tái tạo theo bài báo)
+│   └── improved.py                   ImprovedNKHGA = NKCV-M + gieo + gộp + PX nhanh
+├── experiments/
 │   ├── _paths.py
-│   ├── run_cdw_screen.py
-│   ├── run_cdw_ga.py
-│   ├── run_cdw_jain.py
-│   ├── run_cdw_ari_plot.py
-│   ├── run_ablation.py
-│   ├── test_constant_weight_hypothesis.py
-│   ├── run_persist.py
-│   ├── run_fitness_ari_correlation.py
-│   ├── kout_profile.py
-│   └── test_px_correctness.py
-└── results/
-    ├── ablation_results.csv
-    ├── cdw_ari_4datasets.png
-    └── kout_profile.png
+│   ├── run_final_table.py            bảng cuối: bản gốc vs bản cải tiến, 10 bộ
+│   └── run_gaussian_noise.py         mô hình Gauss có nhiễu theo giao thức bài báo
+├── results/                          CSV/PNG của phiên bản hiện hành
+└── lich_su/                          các hướng đã thử, giữ để tái lập số liệu (mục 4–13, 7b–7d)
+    ├── models/                       CDW (weighted_model, nkcv2_cdw, ablation_model),
+    │                                 nkcv2_mahalanobis, nkcv2_persist, nkcv2_affinity (NKCV-A),
+    │                                 two_level_merge (gộp BIC), datasets_std (StandardScaler cũ)
+    ├── experiments/                  run_cdw_*, run_ablation, test_constant_weight_hypothesis,
+    │                                 run_persist, run_fitness_ari_correlation, kout_profile,
+    │                                 test_px_correctness, run_nkcva_two_level, run_seeding_grid,
+    │                                 run_overlap_diagnostics
+    └── results/                      CSV/PNG của các thí nghiệm lịch sử
 ```
 
-`WeightedNKCV2Model` là lớp chung duy nhất cài ba kernel có trọng số. Các model con chỉ tính
-`raw_w`. `datasets.py` là nguồn nạp bốn bộ dữ liệu đã chuẩn hóa.
+Script lịch sử đọc dữ liệu qua `lich_su/models/datasets_std.py` (StandardScaler trên mọi cột, đúng
+như lúc tạo ra số liệu), nên chạy lại cho đúng các con số đã ghi.
+
+Trong `lich_su/models/`, `WeightedNKCV2Model` là lớp chung duy nhất cài ba kernel có trọng số;
+các model CDW chỉ tính `raw_w`.
 
 ## 15. Cách tái lập
 
-Từ thư mục gốc, dùng môi trường Python đã cài dependencies:
+Từ thư mục gốc, dùng môi trường Python đã cài dependencies.
+
+Phiên bản hiện hành:
 
 ```text
 python tests/run_tests.py
-python huong_cai_tien/experiments/test_px_correctness.py
-python huong_cai_tien/models/nkcv2_cdw.py
-python huong_cai_tien/models/ablation_model.py
-python huong_cai_tien/models/nkcv2_mahalanobis.py
+python huong_cai_tien/models/fast_px.py                       # bản nhanh trùng src/px.py
+python huong_cai_tien/experiments/run_final_table.py          # bảng cuối (~30 phút, 4 lõi: chia --datasets)
+python huong_cai_tien/experiments/run_final_table.py --summary
+```
 
-python huong_cai_tien/experiments/run_cdw_screen.py
-python huong_cai_tien/experiments/run_cdw_ga.py --runs 3
-python huong_cai_tien/experiments/run_cdw_jain.py
-python huong_cai_tien/experiments/run_cdw_ari_plot.py
-python huong_cai_tien/experiments/run_ablation.py --datasets flame --seeds 100 101 --tag screening
-python huong_cai_tien/experiments/test_constant_weight_hypothesis.py --structure-only
+Lịch sử (CDW và các hướng khác):
+
+```text
+python huong_cai_tien/lich_su/experiments/test_px_correctness.py
+python huong_cai_tien/lich_su/models/nkcv2_cdw.py
+python huong_cai_tien/lich_su/models/ablation_model.py
+python huong_cai_tien/lich_su/models/nkcv2_mahalanobis.py
+
+python huong_cai_tien/lich_su/experiments/run_cdw_screen.py
+python huong_cai_tien/lich_su/experiments/run_cdw_ga.py --runs 3
+python huong_cai_tien/lich_su/experiments/run_cdw_jain.py
+python huong_cai_tien/lich_su/experiments/run_cdw_ari_plot.py
+python huong_cai_tien/lich_su/experiments/run_ablation.py --datasets flame --seeds 100 101 --tag screening
+python huong_cai_tien/lich_su/experiments/test_constant_weight_hypothesis.py --structure-only
 ```
 
 `run_cdw_ari_plot.py` chỉ sinh PNG và phải chạy lại GA để vẽ. `nkcv2_persist.py` không có khối
-`__main__`; chạy kiểm thử của nó qua `experiments/run_persist.py`.
+`__main__`; chạy kiểm thử của nó qua `lich_su/experiments/run_persist.py`.
 
 ## 16. Quy tắc nghiên cứu
 
@@ -622,9 +655,9 @@ python huong_cai_tien/experiments/test_constant_weight_hypothesis.py --structure
 
 | Tệp | Dùng cho báo cáo |
 |---|---|
-| [`results/cdw_ari_4datasets.png`](results/cdw_ari_4datasets.png) | ARI gốc và CDW trên bốn bộ |
-| [`results/kout_profile.png`](results/kout_profile.png) | phân bố outdegree |
-| [`results/ablation_results.csv`](results/ablation_results.csv) | 8 variant × 2 seed trên Flame |
+| [`lich_su/results/cdw_ari_4datasets.png`](lich_su/results/cdw_ari_4datasets.png) | ARI gốc và CDW trên bốn bộ |
+| [`lich_su/results/kout_profile.png`](lich_su/results/kout_profile.png) | phân bố outdegree |
+| [`lich_su/results/ablation_results.csv`](lich_su/results/ablation_results.csv) | 8 variant × 2 seed trên Flame |
 | `../results/comparison_result.png` | NK-HGA, CGA, k-means và DBSCAN trên Aggregation |
 
 ## 19. Kết luận cuối

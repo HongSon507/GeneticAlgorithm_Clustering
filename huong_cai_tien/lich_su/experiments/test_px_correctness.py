@@ -44,7 +44,7 @@ from ga import NKHGA, renumber
 import ga as ga_module
 from nkcv2_cdw import CDWModel
 from run_cdw_ga import CDW_KWARGS
-from datasets import load_flame, load_aggregation, load_iris_data
+from datasets_std import load_flame, load_aggregation, load_iris_data
 
 TOL = 1e-9
 

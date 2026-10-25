@@ -30,8 +30,8 @@ import ga
 from ga import NKHGA
 from nkcv2 import NKCV2Model
 from nkcv2_persist import PersistGateModel, HAVE_NUMBA
-from datasets import load_flame, n_clusters, n_noise
-from datasets import load_aggregation
+from datasets_std import load_flame, n_clusters, n_noise
+from datasets_std import load_aggregation
 
 DATASETS = {"flame": load_flame, "aggregation": load_aggregation}
 

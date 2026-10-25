@@ -48,7 +48,7 @@ from nkcv2_cdw import CDWModel
 from search import ls_fi
 from mutations import mutation_reclassify, mutation_merge, mutation_split
 from px import map_solutions, px, fix_labels
-from datasets import DATASETS as ALL_DATASETS
+from datasets_std import DATASETS as ALL_DATASETS
 
 DATASETS = dict(ALL_DATASETS)
 CDW_KWARGS = dict(lam=1.0, branches=("diff",), w_min=0.01, w_max=5.0)

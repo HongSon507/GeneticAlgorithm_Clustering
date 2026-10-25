@@ -5,9 +5,11 @@ x 3 bo ngau nhien = 9 bo du lieu, N = 800, 1% nhieu.
 
 Phuong phap:
   goc            -- src/ga.py::NKHGA nguyen ban, StandardScaler (nhu src/run_comparison.py);
-  cai_tien       -- ImprovedNKHGA (CDW + gieo + PX nhanh + gop manh vun), datasets.preprocess;
+  cai_tien       -- ImprovedNKHGA (NKCV-M + gieo + PX nhanh + gop manh vun), datasets.preprocess;
   cai_tien_truoc_gop -- cung lan chay cai_tien, nhan truoc buoc gop manh vun;
-  hdbscan, gmm_bic   -- moc tham chieu khong can biet truoc k, chay mot lan moi bo.
+  nkcv2_gieo     -- nhu cai_tien nhung fitness NKCV2 goc (ban chot o muc 7g);
+  tomato, hdbscan, gmm_bic -- moc tham chieu khong can biet truoc k, chay mot lan
+                     moi bo; `tomato` la cac luu vuc dinh (z > 2) ma NKCV-M dung.
 
 ARI tinh tren toan bo diem, nhieu that va nhieu du doan deu la nhan 0.
 Moc cua bai bao cho Nc=2, l=2 co nhieu: NK-HGA ARI trung binh 0.96 +- 0.03 (Bang V).
@@ -96,6 +98,12 @@ def main():
                          est.labels_before_merge_, dt)
                     if seed == args.seeds[0]:
                         shown[(bal, ds)] = (X_raw, y, est.labels_)
+                        basin = est.model_.basin_ + 1
+                    t0 = time.time()
+                    lab = ImprovedNKHGA(pool=pool, pop_size=args.pop, max_gen=args.gen,
+                                        fitness="nkcv2", random_state=seed).fit_predict(X_new)
+                    emit(bal, ds, "nkcv2_gieo", seed, y, lab, time.time() - t0)
+                emit(bal, ds, "tomato", -1, y, basin, 0.0)
                 t0 = time.time()
                 emit(bal, ds, "hdbscan", -1, y,
                      HDBSCAN(min_cluster_size=15, copy=True).fit_predict(X_new) + 1,
@@ -130,7 +138,8 @@ def main():
     with open(out) as fh:
         rows = list(_csv.DictReader(fh))
     print(f"\n=== Nc={args.nc}, l={args.l}: {len(args.data_seeds) * 3} bo x {len(args.seeds)} seed ===")
-    for m in ["goc", "cai_tien_truoc_gop", "cai_tien", "hdbscan", "gmm_bic"]:
+    for m in ["goc", "nkcv2_gieo", "cai_tien_truoc_gop", "cai_tien", "tomato",
+              "hdbscan", "gmm_bic"]:
         a = np.array([float(r["ari"]) for r in rows if r["method"] == m])
         c = np.array([float(r["n_clusters"]) for r in rows if r["method"] == m])
         hit = np.mean(c == args.nc) * 100

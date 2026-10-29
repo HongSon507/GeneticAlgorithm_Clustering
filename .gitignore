@@ -10,3 +10,5 @@ submission/
 tmp-doc-report/
 TLTK/
 reference/
+.agents/
+.archify/

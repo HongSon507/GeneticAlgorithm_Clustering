@@ -1,27 +1,17 @@
 """
-Bang cuoi cho luan van: NK-HGA ban goc so voi ban cai tien, tren 10 bo du lieu.
-
-  goc      -- src/ga.py::NKHGA nguyen ban (NKCV2, khoi tao ngau nhien),
-              StandardScaler tren moi cot nhu src/run_comparison.py.
-              `fast_px` duoc bat chi de tang toc: dau ra trung tung phan tu voi
-              src/px.py, nen ket qua giong het ban Python.
-  cai_tien -- models/improved.py::ImprovedNKHGA (fitness NKCV-M + gieo quan
-              the + PX nhanh + gop manh vun) tren datasets.preprocess (bo cot
-              gan hang so + MinMax);
-  cai_tien_truoc_gop -- cung lan chay cai_tien, nhan truoc buoc gop manh vun;
-  nkcv2_gieo -- nhu cai_tien nhung fitness NKCV2 goc (ban chot o muc 7g), de
-              tach tac dung cua dinh nghia fitness moi.
-  tomato, hdbscan, gmm_bic -- moc tham chieu khong can biet truoc k, cung tien
-              xu ly voi cai_tien; chay mot lan moi bo. `tomato` la chinh cac luu
-              vuc dinh co y nghia (z > 2) ma NKCV-M dung: NK-HGA phai hon no.
-
-S1-S4 chay ban day du 5000 diem (dung --subsample de chay nhanh).
-CSV ghi tung dong vao results/final_table_<cac bo>.csv.
+Bang cuoi va Ablation Study cho NK-HGA:
+  goc              -- NKHGA nguyen ban tren StandardScaler (src/);
+  goc_prep         -- NKHGA nguyen ban tren datasets.preprocess (MinMax + bo cot gan hang);
+  cai_tien_cu      -- NKCV-M cung + gieo GMM/KM + gop 2% N (phien ban cu muc 7h);
+  nkcv_m_mem       -- Kiem tra rieng fitness mem: NKCV-M soft, khoi tao ngau nhien, khong gop;
+  ga_noi_tai       -- Kiem tra rieng toan tu GA: NKCV2 goc, khoi tao do thi Gep + dot bien Gep;
+  day_du_ga        -- Ban de xuat thuan GA: fitness mem + khoi tao Gep + dot bien Gep, KHONG hau xu ly;
+  day_du_evidence  -- Ban de xuat + hau xu ly kiem chung bang chung lien ket va Delta f <= 0;
+  tomato, hdbscan, gmm_bic -- Cac phuong phap tham chieu khong can biet truoc k.
 
 Chay:
-    python huong_cai_tien/experiments/run_final_table.py --datasets flame jain
-    python huong_cai_tien/experiments/run_final_table.py --datasets s1 --seeds 100 101
-    python huong_cai_tien/experiments/run_final_table.py --summary   # in bang tu CSV
+    python huong_cai_tien/experiments/run_final_table.py --datasets flame jain --seeds 100 101
+    python huong_cai_tien/experiments/run_final_table.py --summary
 """
 
 from __future__ import annotations
@@ -49,8 +39,28 @@ from sklearn.preprocessing import StandardScaler
 
 ORDER = ["flame", "aggregation", "jain", "iris", "ecoli", "glass",
          "s1", "s2", "s3", "s4"]
-METHODS = ["goc", "nkcv2_gieo", "cai_tien_truoc_gop", "cai_tien", "tomato",
-           "hdbscan", "gmm_bic"]
+
+ALL_METHODS = [
+    "goc",
+    "goc_prep",
+    "cai_tien_cu",
+    "nkcv_m_mem",
+    "ga_noi_tai",
+    "day_du_ga",
+    "day_du_evidence",
+    "tomato",
+    "hdbscan",
+    "gmm_bic"
+]
+
+DEFAULT_METHODS = [
+    "goc",
+    "cai_tien_cu",
+    "ga_noi_tai",
+    "day_du_ga",
+    "day_du_evidence"
+]
+
 FIELDS = ["dataset", "n", "method", "seed", "ari", "n_clusters", "n_noise",
           "runtime_s"]
 
@@ -67,9 +77,10 @@ def gmm_bic(X, k_max=20):
 
 def run_dataset(name, args, writer, fh):
     X_raw, y = subsample(*load_raw(name), args.subsample)
-    X_std = StandardScaler().fit_transform(X_raw)  # nhu src/run_comparison.py
+    X_std = StandardScaler().fit_transform(X_raw)
     X_new = preprocess(X_raw)
-    pool = build_seed_pool(X_new)
+    pool = None
+    active = set(args.methods)
 
     def emit(method, seed, labels, dt):
         r = dict(dataset=name, n=len(y), method=method, seed=seed,
@@ -77,38 +88,86 @@ def run_dataset(name, args, writer, fh):
                  n_noise=n_noise(labels), runtime_s=dt)
         writer.writerow(r)
         fh.flush()
-        print(f"{name:<12}{method:<10}{seed:>5} ARI={r['ari']:.4f} "
+        print(f"{name:<12}{method:<16}{seed:>5} ARI={r['ari']:.4f} "
               f"cụm={r['n_clusters']:>3} nhiễu={r['n_noise']:>4} {dt:7.1f}s",
               flush=True)
 
     for seed in args.seeds:
-        fast_px.install()
-        try:
+        # 1. goc (StandardScaler)
+        if "goc" in active:
+            fast_px.install()
+            try:
+                t0 = time.time()
+                lab = NKHGA(K=3, pop_size=args.pop, max_gen=args.gen,
+                            random_state=seed).fit_predict(X_std)
+                emit("goc", seed, lab, time.time() - t0)
+            finally:
+                fast_px.uninstall()
+
+        # 2. goc_prep (NKHGA goc tren X_new)
+        if "goc_prep" in active:
+            fast_px.install()
+            try:
+                t0 = time.time()
+                lab = NKHGA(K=3, pop_size=args.pop, max_gen=args.gen,
+                            random_state=seed).fit_predict(X_new)
+                emit("goc_prep", seed, lab, time.time() - t0)
+            finally:
+                fast_px.uninstall()
+
+        # 3. cai_tien_cu (phien ban muc 7h: mode_hard, gieo pool, merge legacy)
+        if "cai_tien_cu" in active:
+            if pool is None:
+                pool = build_seed_pool(X_new)
             t0 = time.time()
-            lab = NKHGA(K=3, pop_size=args.pop, max_gen=args.gen,
-                        random_state=seed).fit_predict(X_std)
-            emit("goc", seed, lab, time.time() - t0)
-        finally:
-            fast_px.uninstall()
-        t0 = time.time()
-        est = ImprovedNKHGA(pool=pool, pop_size=args.pop, max_gen=args.gen,
-                            random_state=seed).fit(X_new)
-        dt = time.time() - t0
-        emit("cai_tien_truoc_gop", seed, est.labels_before_merge_, dt)
-        emit("cai_tien", seed, est.labels_, dt)
-        t0 = time.time()
-        lab = ImprovedNKHGA(pool=pool, pop_size=args.pop, max_gen=args.gen,
-                            fitness="nkcv2", random_state=seed).fit_predict(X_new)
-        emit("nkcv2_gieo", seed, lab, time.time() - t0)
-        basin = est.model_.basin_ + 1
+            lab = ImprovedNKHGA(pool=pool, init_source="pool", pop_size=args.pop,
+                                max_gen=args.gen, fitness="mode_hard", merge="legacy",
+                                use_graph_mutations=False, random_state=seed).fit_predict(X_new)
+            emit("cai_tien_cu", seed, lab, time.time() - t0)
+
+        # 4. nkcv_m_mem (fitness mem mot minh, khoi tao ngau nhien)
+        if "nkcv_m_mem" in active:
+            t0 = time.time()
+            lab = ImprovedNKHGA(init_source="random", pop_size=args.pop,
+                                max_gen=args.gen, fitness="mode", merge=False,
+                                use_graph_mutations=False, random_state=seed).fit_predict(X_new)
+            emit("nkcv_m_mem", seed, lab, time.time() - t0)
+
+        # 5. ga_noi_tai (NKCV2 goc + toan tu va khoi tao Gep)
+        if "ga_noi_tai" in active:
+            t0 = time.time()
+            lab = ImprovedNKHGA(init_source="internal", pop_size=args.pop,
+                                max_gen=args.gen, fitness="nkcv2", merge=False,
+                                use_graph_mutations=True, random_state=seed).fit_predict(X_new)
+            emit("ga_noi_tai", seed, lab, time.time() - t0)
+
+        # 6. day_du_ga (Thuan GA: fitness mem + toan tu va khoi tao Gep, khong hau xu ly)
+        if "day_du_ga" in active or "day_du_evidence" in active:
+            t0 = time.time()
+            est = ImprovedNKHGA(init_source="internal", pop_size=args.pop,
+                                max_gen=args.gen, fitness="mode", merge="evidence",
+                                use_graph_mutations=True, random_state=seed).fit(X_new)
+            dt = time.time() - t0
+            if "day_du_ga" in active:
+                emit("day_du_ga", seed, est.labels_before_merge_, dt)
+            if "day_du_evidence" in active:
+                emit("day_du_evidence", seed, est.labels_, dt)
+            basin = est.model_.basin_ + 1
 
     if not args.no_refs:
-        emit("tomato", -1, basin, 0.0)
-        t0 = time.time()
-        lab = HDBSCAN(min_cluster_size=15, copy=True).fit_predict(X_new) + 1
-        emit("hdbscan", -1, lab, time.time() - t0)  # nhieu: -1 -> 0
-        t0 = time.time()
-        emit("gmm_bic", -1, gmm_bic(X_new), time.time() - t0)
+        if "tomato" in active:
+            if 'basin' not in locals():
+                from nkcv2_mode import ModeNKCV2Model
+                m_temp = ModeNKCV2Model(X_new, K=3)
+                basin = m_temp.basin_ + 1
+            emit("tomato", -1, basin, 0.0)
+        if "hdbscan" in active:
+            t0 = time.time()
+            lab = HDBSCAN(min_cluster_size=15, copy=True).fit_predict(X_new) + 1
+            emit("hdbscan", -1, lab, time.time() - t0)
+        if "gmm_bic" in active:
+            t0 = time.time()
+            emit("gmm_bic", -1, gmm_bic(X_new), time.time() - t0)
 
 
 def summary():
@@ -119,16 +178,19 @@ def summary():
     if not rows:
         print("Chua co ket qua trong", RESULTS)
         return
-    print(f"{'bo':<12}{'N':>6} | " + " | ".join(f"{m:^22}" for m in METHODS))
+
+    # Lay cac method thuc te co trong du lieu
+    present_methods = [m for m in ALL_METHODS if any(r["method"] == m for r in rows)]
+    print(f"{'bo':<12}{'N':>6} | " + " | ".join(f"{m:^20}" for m in present_methods))
     for name in ORDER:
         sel = [r for r in rows if r["dataset"] == name]
         if not sel:
             continue
         cells = []
-        for m in METHODS:
+        for m in present_methods:
             s = [r for r in sel if r["method"] == m]
             if not s:
-                cells.append(f"{'-':^22}")
+                cells.append(f"{'-':^20}")
                 continue
             a = np.array([float(r["ari"]) for r in s])
             c = np.mean([float(r["n_clusters"]) for r in s])
@@ -140,9 +202,10 @@ def summary():
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--datasets", nargs="+", default=ORDER)
-    ap.add_argument("--seeds", nargs="+", type=int, default=list(range(100, 110)))
+    ap.add_argument("--seeds", nargs="+", type=int, default=list(range(100, 105)))
     ap.add_argument("--pop", type=int, default=60)
     ap.add_argument("--gen", type=int, default=80)
+    ap.add_argument("--methods", nargs="+", default=DEFAULT_METHODS)
     ap.add_argument("--subsample", type=int, default=None)
     ap.add_argument("--no-refs", action="store_true",
                     help="bo qua HDBSCAN va GMM-BIC")

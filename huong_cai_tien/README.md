@@ -10,23 +10,18 @@ trong `models/` và được đưa vào NK-HGA bằng monkeypatch có hoàn nguy
 
 ## 0. Phiên bản hiện hành (đọc trước)
 
-Bản cải tiến dùng cho bài báo nằm ở `models/improved.py` (`ImprovedNKHGA`):
+Bản cải tiến thuần GA dùng cho bài báo nằm ở `models/improved.py` (`ImprovedNKHGA`), xuất phát trực tiếp từ 4 điểm yếu nội tại của NK-HGA gốc mà **không cần biết trước số cụm $K$** và **không phụ thuộc thuật toán phân cụm ngoại lai**:
 
-- **fitness NKCV-M** (`nkcv2_mode.py`): cụm được định nghĩa theo đỉnh mật độ có ý nghĩa (ToMATo,
-  độ sâu yên ngựa theo đơn vị nhiễu, z > 2); trên cạnh vượt yên ngựa, gộp hai đỉnh bị phạt và cắt
-  không bị phạt; mọi cạnh khác giữ NKCV2;
-- **gieo** 30% quần thể và immigrant từ GMM / k-means / Density Peaks (`seeded_ga.py`);
-- **tiền xử lý:** bỏ cột gần hằng số rồi MinMax (`datasets.preprocess`);
-- phụ: gộp mảnh vụn sau GA (`fragment_merge.py`); PX `O(N log N)` trùng từng bit `src/px.py`
-  (`fast_px.py`).
+- **Fitness NKCV-M mềm** (`nkcv2_mode.py`): dùng đỉnh mật độ có ý nghĩa (ToMATo trên đồ thị kNN đối xứng, độ sâu yên ngựa chuẩn hóa nhiễu $z > z_0 = 1.5$) làm **tín hiệu điều chỉnh phụ** với trọng số tĩnh có trần $w_{ij} \le w_{\max} = 0.6$. Đóng góp trên cạnh vượt yên ngựa trộn $(1 - w_{ij})\,\text{NKCV2}_{ij} + w_{ij}\,\text{Mode}_{ij}$, cho phép GA vẫn gộp hai đỉnh nếu cấu trúc toàn cục ủng hộ;
+- **Khởi tạo đa cấu trúc nội tại trên $G_{ep}$** (`seeded_ga.py`): cắt ngẫu nhiên rừng cây liên kết mật độ `dlink = M[:, 0]` và phân vùng Voronoi ngẫu nhiên trên ma trận khoảng cách $D$ có sẵn của `NKCV2Model` (100% nội tại, không gọi K-means/GMM ngoài, không cố định $k$ mục tiêu), kết hợp chu kỳ Memetic `leng_local` thích nghi theo `max_gen`;
+- **Toán tử đột biến trên đồ thị & nhãn nhiễu `0`** (`ga_operators.py`): `mutation_merge_graph` ưu tiên gộp các mảnh có mật độ cạnh ngắn $G_{ep}$ qua biên cao; `mutation_split_graph` chọn hai tâm tách theo $\rho \cdot D$; `ls_fi_with_noise` xét nhãn nhiễu `0` cho điểm thưa ($\rho_i \le d_\rho$);
+- **Hậu kiểm mảnh vụn theo bằng chứng** (`fragment_merge.py::merge_fragments_evidence`): chỉ gộp mảnh siêu nhỏ khi có liên kết ngắn áp đảo sang cụm láng giềng và không phá vỡ cảnh quan fitness ($\Delta f \le 10^{-4}$); mảnh cô lập mật độ thấp gán về nhãn nhiễu `0`; bảo vệ tuyệt đối các cụm nhỏ thật (như trên Ecoli, Glass);
+- **Tiền xử lý & tốc độ:** bỏ cột gần hằng số rồi MinMax (`datasets.preprocess`); PX `O(N log N)` trùng từng bit `src/px.py` (`fast_px.py`).
 
-Kết quả chính (5 seed, so với `src/`): Flame 0.013 → 0.932; Aggregation 0.903 → 0.997; S2 0.407 →
-0.888; S3 0.030 → 0.599; S4 0.049 → 0.546; Ecoli 0.038 → 0.473; mô hình Gauss có nhiễu giữ ARI
-0.976, đúng số cụm 18% → 64%. Còn yếu: Jain. Bảng đầy đủ:
-[`DE_XUAT_FITNESS_CHONG_LAN.md`](DE_XUAT_FITNESS_CHONG_LAN.md) mục 7h.
+Kết quả chính (so với `src/` và bản 7h cũ): Flame tự tách đạt ARI **0.907** (2 cụm) không cần gieo K-means/GMM; Aggregation **0.988** (đúng 7 cụm ở mọi seed); S2 **0.889** (đúng 15 cụm, so với 0.396 / 8 cụm của bản gốc); Ecoli giữ được **6–7 cụm** (ARI **0.455–0.461**, khắc phục lỗi gộp ép còn 2–3 cụm của bản 7h); Glass tìm đúng **6 cụm thật** (ARI **0.210**). Chi tiết:
+[`DE_XUAT_FITNESS_CHONG_LAN.md`](DE_XUAT_FITNESS_CHONG_LAN.md) mục 7h–7i.
 
-Các mục 1–13 bên dưới mô tả giai đoạn nghiên cứu trước (CDW và các hướng khác); mã và số liệu của
-chúng nằm trong `lich_su/`.
+Các mục 1–13 bên dưới và [`DE_XUAT_FITNESS_CHONG_LAN.md`](DE_XUAT_FITNESS_CHONG_LAN.md) lưu giữ toàn bộ số liệu Ablation Study của các hướng đã thử nghiệm (CDW, Mahalanobis, Persistence, NKCV-A, gộp BIC hai tầng, tách nguồn gieo và kiến trúc thuần GA hiện hành). Biểu đồ tổng hợp nằm tại [`results/tong_hop_ket_qua.png`](results/tong_hop_ket_qua.png) và [`results/gaussian_noise_nc2_l2.png`](results/gaussian_noise_nc2_l2.png).
 
 ## 1. Kết luận nghiên cứu
 

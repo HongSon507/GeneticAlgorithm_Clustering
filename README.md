@@ -43,12 +43,10 @@ GAh/
 ├── huong_cai_tien/               # Research: improving NK-HGA (src/ is never modified)
 │   ├── README.md                 #   Consolidated research report
 │   ├── DE_XUAT_FITNESS_CHONG_LAN.md  # Proposals + evidence for the current improved version
-│   ├── models/                   #   Current version: improved.py (seeding + fast PX),
-│   │                             #   seeded_ga.py, fast_px.py, datasets.py (preprocessing)
-│   ├── experiments/              #   run_final_table.py: original vs improved, 10 datasets
-│   ├── results/                  #   CSVs of the final table
-│   └── lich_su/                  #   Earlier directions kept for reproducibility
-│                                 #   (CDW, Mahalanobis, Persistence, NKCV-A, BIC merge)
+│   ├── models/                   #   Current version: improved.py, nkcv2_mode.py (soft mode),
+│   │                             #   ga_operators.py, seeded_ga.py, fragment_merge.py, fast_px.py
+│   ├── experiments/              #   run_final_table.py, run_gaussian_noise.py
+│   └── results/                  #   Summary figures (tong_hop_ket_qua.png, gaussian_noise_nc2_l2.png)
 ├── requirements.txt
 └── README.md
 ```

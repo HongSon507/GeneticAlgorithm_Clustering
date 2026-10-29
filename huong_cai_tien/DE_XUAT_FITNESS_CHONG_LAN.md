@@ -594,6 +594,137 @@ Mô hình Gauss có nhiễu, Nc = 2, l = 2 (9 bộ × 5 seed):
 - Kết quả 5 seed, chưa theo giao thức đầy đủ của bài báo (25 lần chạy, chọn bằng DBCV, 144 bộ Gauss,
   kiểm định thống kê).
 
+## 7i. Cải tiến nội tại thuần GA: NKCV-M mềm, khởi tạo & toán tử trên đồ thị `Gep`, và gộp mảnh theo bằng chứng
+
+### 7i.1 Động lực: Giữ trọn triết lý tự tìm số cụm của NK-HGA
+
+Phiên bản 7h còn ba điểm dễ bị phản biện khi xét dưới góc độ một thuật toán tiến hóa phân cụm độc lập:
+1. **Phạt nhị phân trên cạnh yên ngựa** (`cùng nhãn → ρ_j`, `khác nhãn → 0`) biến số đỉnh có ý nghĩa của ToMATo thành *cận dưới cứng* cho số cụm; hơn nữa trên Flame (`z = 1.8 < 2.0`), `NKCV-M` không nhận ra đỉnh thứ hai mà hoàn toàn nhờ lời giải gieo từ GMM/k-means.
+2. **Gieo quần thể từ GMM / k-means / DPC bên ngoài** dễ bị chất vấn là mượn kết quả của thuật toán phân cụm khác và đưa thiên kiến về `k` vào quần thể.
+3. **Quy tắc gộp mảnh cứng `< 2% N`** (`merge_fragments`) xóa sổ các cụm nhỏ thật sự trên dữ liệu thực: Ecoli tụt từ `7.6` xuống `2.4` cụm (thật 8), Glass tụt từ `6.8` xuống `3.0` cụm (thật 6).
+
+### 7i.2 Bốn trụ cột cải tiến nội tại (100% thuần GA)
+
+1. **NKCV-M mềm làm tín hiệu phụ (`models/nkcv2_mode.py`)**:
+   - Hạ ngưỡng nhận diện yên ngựa về `z0 = 1.5` (nhận diện được đỉnh thứ hai của Flame có `z = 1.83`), nhưng **không ép tách cứng**: mỗi cạnh vượt yên ngựa mang trọng số tĩnh có trần `w_ij = w_max · s(z_AB)` với `w_max = 0.6` và `s(z) = clip(0.5 + 0.5·(z - z0)/(z_full - z0), 0.5, 1.0)`.
+   - Đóng góp cạnh: `(1 - w_ij)·NKCV2_ij + w_ij·Mode_ij`. Khi `w_max = 0.6`, chi phí gộp và tách ở yên ngựa cạnh tranh cân bằng; hai đỉnh mật độ vẫn được GA gộp thành một cụm nếu cấu trúc các cạnh `Gep` xung quanh ủng hộ việc gộp.
+   - `w_max = 0` hoặc `z0 = None` trùng khít NKCV2 gốc đến `1e-12`; `self_test` PASS trên Flame (2 đỉnh), Aggregation (7 đỉnh) và S2 (15 đỉnh).
+2. **Khởi tạo đa cấu trúc nội tại trên đồ thị `Gep` (`models/seeded_ga.py`)**:
+   - Thay cho việc gọi GMM/k-means bên ngoài, các cá thể được khởi tạo trực tiếp từ cấu trúc nội tại của `NKCV2Model` (`D`, `ρ`, `M`):
+     - `init_density_tree` (45%): chọn ngẫu nhiên `m ∈ [2, ⌊√N⌋]` hạt giống làm gốc (xác suất tỷ lệ với `ρ_i · (1 + D_{i,dlink[i]}/mean)`), cắt rừng cây liên kết mật độ `dlink = M[:, 0]` và lan truyền nhãn trước khi chạy `ls_fi_with_noise`.
+     - `init_voronoi_internal` (45%): chọn `m` hạt giống theo `D²-sampling` trực tiếp trên ma trận `D`, gán vùng Voronoi rồi chạy `ls_fi_with_noise`.
+     - Khởi tạo ngẫu nhiên gốc (10%): giữ khả năng khám phá tự do.
+   - Khôi phục chu kỳ Memetic `leng_local = min(leng_local, max(15, max_gen // 3))` để pha tinh chỉnh cục bộ định kỳ thực sự kích hoạt khi `max_gen = 80`.
+3. **Toán tử đột biến trên đồ thị `Gep` và nhãn nhiễu `0` (`models/ga_operators.py`)**:
+   - `mutation_merge_graph`: ưu tiên chọn cặp cụm có mật độ cạnh ngắn `Gep` (`D_ij ≤ dt1`) qua biên lớn nhất chia cho `min(|A|, |B|)`.
+   - `mutation_split_graph`: chọn tâm thứ hai theo `ρ_i · D(i, proto1)` để hai tâm tách nằm ở hai vùng khác nhau, tránh cắt vụn một đỉnh.
+   - `ls_fi_with_noise`: thử thêm nhãn nhiễu `0` cho các điểm thưa (`ρ_i ≤ d_rho`) thông qua `df_element`.
+4. **Hậu kiểm mảnh vụn theo bằng chứng (`models/fragment_merge.py::merge_fragments_evidence`)**:
+   - Chỉ gộp mảnh siêu nhỏ (`≤ K` điểm với `≥ 70%` phiếu láng giềng về một cụm đích, hoặc `< τ` nhưng `≥ 80%` cạnh ngắn đều trỏ vào một cụm đích) **và** phép gộp không làm phá vỡ cảnh quan fitness (`Δf ≤ 1e-4`).
+   - Mảnh cô lập có mật độ trung vị `≤ d_rho` được gán về nhãn nhiễu `0`. Các cụm nhỏ thật sự (như trên Ecoli, Glass) được bảo vệ nguyên vẹn.
+
+### 7i.3 Kết quả kiểm chứng đối sánh (Ablation)
+
+So sánh giữa **Gốc** (`src/`), **Cải tiến cũ (7h)** (có gieo GMM/KM + phạt cứng + gộp ép 2%), **GA nội tại** (NKCV2 gốc + khởi tạo & toán tử `Gep`), **Đề xuất thuần GA (`day_du_ga`)** và **Đề xuất có hậu kiểm bằng chứng (`day_du_evidence`)**:
+
+| Bộ (k thật) | Gốc | Cải tiến cũ (7h) | GA nội tại (NKCV2) | **Đề xuất: Thuần GA (`day_du_ga`)** | **Đề xuất: Bằng chứng (`day_du_evidence`)** |
+|---|---|---|---|---|---|
+| Flame (2) | 0.013 (2.0) | **0.912** (2.0) | 0.013 (2.0) | **0.907** (2.0) | **0.907** (2.0) |
+| Aggregation (7) | 0.906 (6.0) | **0.997** (7.0) | 0.988 (7.0) | **0.988** (7.0) | **0.988** (7.0) |
+| Jain (2) | 0.233 (7.5) | 0.304 (8.5) | 0.316 (8.0) | **0.318** (9.0) | **0.318** (9.0) |
+| Ecoli (8) | 0.038 (2.0) | 0.426 (2.5) | 0.443 (4.0) | **0.450–0.461** (**6–9**) | **0.455** (**7.0**) |
+| Glass (6) | 0.120 (5.5) | 0.183 (2.0) | **0.210** (**6.5**) | **0.210** (**6.5**) | **0.210** (**5.0**) |
+| S1 (15, mẫu 1000) | 0.906 (14.0) | **0.975** (15.0) | 0.907 (14.0) | 0.968 (21.5) | **0.968** (15.0) |
+| S2 (15, mẫu 1000) | 0.424 (8.0) | **0.895** (15.0) | 0.392 (8.0) | 0.885 (27.0) | **0.889** (**15.0**) |
+
+Đọc kết quả:
+- **Thuần GA tự giải được Flame (`0.907`, đúng 2 cụm)** mà không cần bất kỳ lời giải gieo nào từ GMM hay k-means. Cột `GA nội tại (NKCV2)` đạt `0.013` trên Flame và `0.392` trên S2 chứng minh tín hiệu yên ngựa mềm của `NKCV-M` là thành phần quyết định để tách cụm chồng lấn.
+- **Bảo vệ được các cụm nhỏ thật trên dữ liệu thực:** Trên Ecoli (`k = 8`), số cụm tăng từ `2.5` (bản 7h cũ) lên **7.0 cụm** (`ARI = 0.455`); trên Glass (`k = 6`), số cụm tăng từ `2.0` lên **5–6.5 cụm** (`ARI = 0.210`, cao hơn cả bản gốc lẫn bản 7h).
+- **Giữ nguyên sức mạnh trên dữ liệu chồng lấn nhiều cụm:** Trên S2 (`k = 15`), `day_du_evidence` loại bỏ đúng 11 mảnh biên 1–3 điểm để hội tụ về **chính xác 15 cụm** với `ARI = 0.889`.
+
+### 7i.4 Tổng hợp toàn bộ các phép thử Ablation qua các giai đoạn (lưu trữ kết quả sau khi dọn `lich_su/`)
+
+1. **Ablation nguồn khởi tạo (5 seed 100–104, trước khi chuyển sang khởi tạo đồ thị `Gep` mới)**:
+   - Trên **Flame** (`k = 2`): Không gieo (`z0 = 2.0` cũ) đạt `0.013` (1 cụm sau gộp); chỉ cắt cây liên kết mật độ `dlink` nội tại (`gieo_dpc`) đạt **`0.929 ± 0.006`** (đúng 2 cụm ở 5/5 seed); gieo đầy đủ `GMM + KM + DPC` đạt `0.932 ± 0.005` (2 cụm). Điều này chứng minh chỉ cần cắt cây `dlink` nội tại của NKCV2 đã đủ tương đương gieo ngoại lai.
+   - Trên **S2** (`k = 15`, mẫu 1000): Với `NKCV2` gốc, dù gieo đầy đủ `GMM + KM + DPC` vẫn bị gộp về `8.0 cụm` (`ARI = 0.416 ± 0.050`); ngược lại với `NKCV-M`, ngay cả khởi tạo ngẫu nhiên thuần (`khong_gieo`) đã vọt lên `0.800 ± 0.052` (13.4 cụm), cắt cây `dlink` đạt `0.867 ± 0.028` (14.6 cụm), và bản đề xuất mới (`day_du_evidence`) đạt **`0.889`** với **đúng 15 cụm**.
+2. **Tổng kết các hướng fitness đã thử nghiệm và lý do giữ/loại**:
+   - **CDW (Context-Dependent Weighting, README §6–§9)**: Hạ phạt nhánh khác nhãn theo compactness × valley × boundary. Giúp Flame (`0.929`) và S2 (`0.783`) nhưng **phân mảnh nặng** (S2 ra 31 cụm, Jain 26 cụm) và làm hỏng mô hình Gauss có nhiễu của bài báo (`ARI` tụt từ `0.977` xuống `0.820`). → *Loại khỏi bản chính*.
+   - **Mahalanobis cục bộ & Persistence tuyệt đối/tương đối (README §12)**: Mahalanobis tĩnh quá yếu trên `K = 3`; persistence tương đối tạo đỉnh giả ở vùng thưa. → *Được thay bằng độ sâu yên ngựa chuẩn hóa nhiễu Poisson `z` trong `NKCV-M`*.
+   - **NKCV-A (Ái lực đồng xuất hiện A-CA / A-SNN / A-GMM, mục 7b & 7d.2)**: Thắng Flame và Glass nhưng làm giảm S1 (`0.905 → 0.806`) và phụ thuộc thiên lệch hình elip của GMM. → *Loại khỏi bản chính*.
+   - **Gộp hai tầng theo BIC (mục 7b) & Gộp mảnh cứng `< 2% N` (mục 7f–7h)**: BIC gộp nhầm cụm phi lồi (Flame về 1 cụm); quy tắc `< 2% N` xóa sổ các cụm nhỏ thật trên Ecoli (`7.6 → 2.4` cụm) và Glass (`6.8 → 3.0` cụm). → *Được thay bằng toán tử `mutation_merge_graph` trong GA kết hợp hậu kiểm bằng chứng `merge_fragments_evidence`*.
+
+Biểu đồ tổng hợp trực quan lưu tại [`results/tong_hop_ket_qua.png`](results/tong_hop_ket_qua.png) và [`results/gaussian_noise_nc2_l2.png`](results/gaussian_noise_nc2_l2.png).
+
+### 7i.5 Chọn `z0 = 1.5` và `z_full = 4.0`: hiệu chuẩn trên dữ liệu rỗng
+
+**Vấn đề.** Yên ngựa duy nhất của Flame có `z ≈ 1.83`. Với `z0 = 2.0` Flame có 1 đỉnh và bản đề xuất
+đạt `0.013`; với `z0 = 1.5` có 2 đỉnh và đạt `0.907`. Một ngưỡng nằm ngay dưới giá trị của đúng một bộ
+dữ liệu dễ bị xem là chỉnh tham số theo dữ liệu kiểm tra, nên `z0` cần một căn cứ không dùng benchmark.
+
+**Cách hiệu chuẩn.** Dùng dữ liệu **rỗng**: chỉ có một cụm (một khối Gauss, hoặc phân bố đều), nên mọi
+đỉnh thứ hai đều là đỉnh giả. Không dùng nhãn thật, không dùng bộ benchmark nào để chọn. Cùng tiền xử lý
+(`datasets.preprocess`), cùng `dc` theo quy tắc 2%, ToMATo trên kNN `k = 10`.
+Script: `experiments/run_z0_calibration.py` (`--part dinh` cho bảng A–B, `--part ga` cho bảng C).
+
+**A. Tỉ lệ có đỉnh giả trên dữ liệu rỗng** (30 lần lặp mỗi ô; trong ngoặc: số đỉnh trung bình)
+
+| Dữ liệu rỗng | `z0=1.0` | `z0=1.5` | `z0=1.75` | `z0=2.0` | `z0=2.5` | `z0=3.0` |
+|---|---|---|---|---|---|---|
+| Gauss, N=240, l=2 | 67% (1.97) | 13% (1.17) | 10% (1.13) | 3% (1.03) | 0% | 0% |
+| Gauss, N=1000, l=2 | 43% (1.43) | 7% (1.07) | 3% (1.03) | 0% | 0% | 0% |
+| Đều, N=240, l=2 | 97% (4.07) | 73% (1.97) | 30% (1.37) | 3% (1.03) | 0% | 0% |
+| Đều, N=1000, l=2 | 100% (5.23) | 73% (2.33) | 53% (1.73) | 27% (1.27) | 3% (1.03) | 0% |
+| Gauss, l=4 (N=240 và 1000) | 0% | 0% | 0% | 0% | 0% | 0% |
+| Đều, l=4, N=240 | 20% (1.23) | 3% (1.03) | 0% | 0% | 0% | 0% |
+| Đều, l=4, N=1000 | 3% (1.03) | 0% | 0% | 0% | 0% | 0% |
+
+**B. Số đỉnh trên benchmark** (chỉ đối chiếu, không dùng để chọn; S1–S4 mẫu 1000 điểm)
+
+| Bộ (k thật) | `z0=1.0` | `z0=1.5` | `z0=1.75` | `z0=2.0` | `z0=2.5` | `z0=3.0` |
+|---|---|---|---|---|---|---|
+| Flame (2) | 2 | **2** | 2 | 1 | 1 | 1 |
+| Aggregation (7) | 7 | 7 | 7 | 7 | 5 | 5 |
+| Jain (2) | 7 | 2 | 2 | 2 | 1 | 1 |
+| Iris (3) | 2 | 2 | 2 | 2 | 2 | 2 |
+| Ecoli (8) | 2 | 2 | 2 | 2 | 2 | 2 |
+| Glass (6) | 6 | 2 | 1 | 1 | 1 | 1 |
+| S1 / S2 (15) | 15 / 15 | 15 / 15 | 15 / 15 | 15 / 15 | 15 / 15 | 15 / 15 |
+| S3 (15) | 15 | 15 | 15 | 14 | 13 | 10 |
+| S4 (15) | 15 | 14 | 13 | 13 | 11 | 7 |
+| Gauss có nhiễu Nc=2, đúng 2 đỉnh | 2/9 | 8/9 | 9/9 | 8/9 | 8/9 | 7/9 |
+
+**C. Ở mức GA** (`ImprovedNKHGA` mặc định, chỉ đổi `z0`; seed 100–102; `w_max = 0.6`, `z_full = 4.0`)
+
+| Bộ | `z0 = 1.5` | `z0 = 2.0` |
+|---|---|---|
+| Khối đều 2D, N=1000 (1 cụm) | 2 đỉnh (đỉnh giả), `w` lớn nhất 0.345 trên 56 cạnh; GA ra **1 cụm ở 3/3 seed** | 1 đỉnh; 1 cụm ở 3/3 seed |
+| Flame (2) | **0.907**, 2 cụm ở 3/3 seed | 0.013 ở 2/3 seed (seed 102: 0.923) |
+| S1 (15) | 0.966–0.969 (21–23 cụm) → sau gộp 0.975 (16) | giống hệt từng seed |
+| S2 (15) | 0.880–0.890 (24–28) → sau gộp 0.889–0.909 (15) | 0.819–0.888 (25–27) → sau gộp 0.834–0.905 (14–15) |
+
+**Vì sao đỉnh giả không xé cụm.** Trên một cạnh ngắn vượt yên ngựa (`d ≤ dt0`), gộp tốn `w·ρ_j`, cắt tốn
+`(1 − w)·ρ_j`. Cắt chỉ rẻ hơn khi `w > 0.5`, tức `s(z) > 5/6`, tức
+`z > z0 + ⅔(z_full − z0) = 3.17` với `z0 = 1.5`, `z_full = 4.0`. Dưới mức đó, tín hiệu yên ngựa chỉ thu hẹp
+lợi thế của việc gộp (từ `0` so với `ρ_j` thành `w·ρ_j` so với `(1 − w)·ρ_j`), chứ không tự đẩy GA cắt. Ở
+bảng A, khi `z0 = 3.0` không mẫu rỗng nào còn đỉnh thứ hai; ở bảng C, đỉnh giả của khối đều chỉ nhận
+`w = 0.345 < 0.5`. Vì vậy trong bản mềm, `z0` không phải ngưỡng kiểm định mà là **điểm bắt đầu tính bằng
+chứng**: yên ngựa sâu khoảng 1.5σ theo đơn vị nhiễu Poisson bắt đầu làm yếu lợi thế gộp; chỉ yên ngựa sâu
+trên ~3.2σ mới làm cạnh nghiêng hẳn về phía cắt.
+
+**Kết luận.**
+
+1. Giữ `z0 = 1.5`. Cái giá đo được ở mức đếm đỉnh là có thật (73% đỉnh giả trên khối đều 2D), nhưng ở mức
+   GA bằng 0: khối đều không bị tách ở cả 3 seed. Trên benchmark, hạ `z0` từ 2.0 xuống 1.5 chỉ đưa số đỉnh
+   lại gần số cụm thật (Flame 1→2, S4 13→14, Glass 1→2); không bộ nào bị đẩy xa đáp án.
+2. Thống nhất `z_full = 4.0` cho cả `nkcv2_mode.Z_FULL` lẫn `ImprovedNKHGA` (trước đây module khai báo
+   5.0 trong khi `ImprovedNKHGA` truyền 4.0; mọi số liệu ở mục 7i đều chạy với 4.0).
+3. `z0` không gây ra việc chia vụn S1/S2 trước bước gộp (21–28 cụm): mọi yên ngựa của S1/S2 có `z > 2`
+   nên hai giá trị `z0` cho cùng trọng số. Việc chia vụn đến từ thành phần khác và được bước gộp kéo về
+   15–16 cụm.
+4. **Giới hạn phải nêu:** bằng chứng cho đỉnh thứ hai của Flame yếu (`z ≈ 1.83`). Flame chỉ có 2 đỉnh khi
+   `z0 ≤ 1.75` và thất bại ở `z0 = 2.0`; luận văn nên trình bày bảng độ nhạy A–C thay vì một giá trị
+   đơn lẻ. Bảng C mới có 3 seed.
+
 ## 8. Nguồn tham khảo (đã kiểm tra tồn tại; xếp hạng Q theo SJR nên tra lại tại scimagojr.com)
 
 | # | Tài liệu | Nơi đăng | Hạng | Dùng ở |

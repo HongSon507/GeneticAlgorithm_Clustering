@@ -6,7 +6,7 @@ Bang cuoi va Ablation Study cho NK-HGA:
   nkcv_m_mem       -- Kiem tra rieng fitness mem: NKCV-M soft, khoi tao ngau nhien, khong gop;
   ga_noi_tai       -- Kiem tra rieng toan tu GA: NKCV2 goc, khoi tao do thi Gep + dot bien Gep;
   day_du_ga        -- Ban de xuat thuan GA: fitness mem + khoi tao Gep + dot bien Gep, KHONG hau xu ly;
-  day_du_evidence  -- Ban de xuat + hau xu ly kiem chung bang chung lien ket va Delta f <= 0;
+  day_du_evidence  -- Ban de xuat + hau xu ly kiem chung bang chung lien ket va Delta f <= 1e-4;
   tomato, hdbscan, gmm_bic -- Cac phuong phap tham chieu khong can biet truoc k.
 
 Chay:

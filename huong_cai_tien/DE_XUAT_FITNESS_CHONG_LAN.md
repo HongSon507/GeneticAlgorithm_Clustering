@@ -1,7 +1,10 @@
 # Đề xuất cải tiến hàm fitness NKCV2 cho dữ liệu chồng lấn
 
-> Bổ sung cho [`README.md`](README.md). Tài liệu này **chỉ đề xuất**; chưa có thí nghiệm nào trong đây
-> được chạy. Mọi đề xuất đều tuân thủ ràng buộc ở README §5: hệ số trong `comp_fi` phải **tĩnh theo
+> **Số liệu dùng cho bài báo: mục 7j** (bảng thống nhất, phân bổ công lao, hình, giới hạn). Các bảng ở
+> các mục 7b–7i lấy từ nhiều phiên bản mã nên chỉ giữ làm lịch sử.
+>
+> Bổ sung cho [`README.md`](README.md). Mục 1–7 là đề xuất ban đầu; kết quả thí nghiệm ở mục 7b–7j.
+> Mọi đề xuất đều tuân thủ ràng buộc ở README §5: hệ số trong `comp_fi` phải **tĩnh theo
 > lời giải `x`**, để Delta Evaluation và Partition Crossover vẫn đúng.
 
 ## 0. Chẩn đoán: vì sao NKCV2 thua trên dữ liệu chồng lấn
@@ -39,12 +42,12 @@ nhiễu      : giữ nguyên NKCV2
 
 - `β = 0` tái tạo NKCV2 gốc đến 1e-12, đúng quy tắc §16.2 của README.
 - `A_ij` là mảng `(N, K)` tĩnh, nên `f_i` vẫn chỉ đọc `x_i` và `x_j` với `j ∈ M_i`. Delta Evaluation
-  và PX giữ nguyên tính đúng, và có thể kiểm bằng `test_px_correctness.py`.
+  và PX giữ nguyên tính đúng.
 - Điểm khác CDW: số hạng `β(1 − A_ij)` **phạt cả việc gộp sai hai điểm gần nhau**. Đây chính là phần
   NKCV2 và CDW không biểu diễn được (điểm 2 ở §0).
 
-Cài đặt: thêm `Mbeta_same`/`Mbeta_diff` theo dạng *cộng* vào `comp_fi_weighted` trong
-`lich_su/models/weighted_model.py` (hiện kernel chỉ có trọng số *nhân*). Mô hình con chỉ cần tính `A[N, K]`.
+Cài đặt: thêm `Mbeta_same`/`Mbeta_diff` theo dạng *cộng* vào `comp_fi_weighted`
+(kernel lúc đó chỉ có trọng số *nhân*). Mô hình con chỉ cần tính `A[N, K]`.
 
 ### 1.2 Ba cách tính `A_ij`, xếp từ rẻ đến mạnh
 
@@ -147,17 +150,13 @@ tổng quát hóa mạnh.
 
 ## 7. Thứ tự thực hiện đề xuất
 
-1. Mở rộng `weighted_model.py` với số hạng cộng `β·A_ij` (§1.1), kèm self-test `β=0` và Delta/PX.
+1. Mở rộng kernel có trọng số với số hạng cộng `β·A_ij` (§1.1), kèm self-test `β=0` và Delta/PX.
 2. Cài A-SNN (rẻ), A-GMM và A-CA, rồi chạy A1 trên Iris, Flame, Aggregation, Jain và S1–S4.
 3. Chạy GA đầy đủ (≥10 seed, bootstrap CI như README §10.2) cho biến thể qua A1.
 4. Nếu Jain vẫn hỏng: thay `c_ij` bằng `b_DCM` (§2).
 5. Nếu Iris/S4 vẫn hỏng: thêm tầng gộp ngoài (§4).
 
 ## 7b. Kết quả thực nghiệm §1 (NKCV-A) và §4 (hai tầng)
-
-Mã: `lich_su/models/nkcv2_affinity.py` (NKCV-A), `lich_su/models/two_level_merge.py` (gộp
-theo BIC), `lich_su/experiments/run_nkcva_two_level.py`. Dữ liệu thô:
-`lich_su/results/nkcva_two_level_<bộ>.csv`.
 
 Tên trong code: `ca_gmm` = **A-CA** (đồng xuất hiện từ ensemble GMM, k = 2..10, 5 seed mỗi k),
 `gmm` = **A-GMM** (posterior của GMM chọn k theo BIC), `snn` = **A-SNN** (`k = 10`).
@@ -216,8 +215,7 @@ Trên Aggregation bước gộp không đổi nhãn nào, nên chỉ ghi dòng `
 
 ## 7c. Tách lỗi tìm kiếm khỏi lỗi fitness: thử gieo quần thể ban đầu
 
-Script tạm ban đầu đã được thay bằng `models/seeded_ga.py` và
-`lich_su/experiments/run_seeding_grid.py` (mục 7d.2 lặp lại kết luận này với 5 seed). Gieo 10 cá thể ban đầu từ GMM và k-means với `k = 2..6`
+Mục 7d.2 lặp lại kết luận này với 5 seed. Gieo 10 cá thể ban đầu từ GMM và k-means với `k = 2..6`
 (không dùng nhãn thật), mỗi cá thể qua `ls_fi` như immigrant thường. Fitness giữ nguyên.
 Seed 100–102, `pop=60`, `gen=80`. A-CA được dùng với `β=0.5`.
 
@@ -255,7 +253,7 @@ search. `models/fast_px.py` viết lại hai hàm này: ghép nhãn bằng danh 
 
 ### 7d.2 Lưới 4 cấu hình × 10 bộ
 
-`lich_su/experiments/run_seeding_grid.py`, seed 100–104, `pop=60`, `gen=80`, `K=3`. S1–S4 dùng mẫu con 1000
+Seed 100–104, `pop=60`, `gen=80`, `K=3`. S1–S4 dùng mẫu con 1000
 điểm (seed 0). Gieo: 30% quần thể ban đầu và immigrant từ GMM/k-means/DPC với `k = 2..k_max(N)`,
 không dùng nhãn thật (`models/seeded_ga.py`). Dữ liệu Ecoli, Glass, S1–S4 lấy từ bộ benchmark của
 Gagolewski (bản sao UCI/SIPU). ARI trung bình ± SD (số cụm):
@@ -289,7 +287,7 @@ Ecoli có hai cột gần như hằng số: `lip` (2 giá trị, 97% cùng giá 
 giá trị). Sau `StandardScaler`, điểm duy nhất khác ở `chg` cách trung bình ~√335 ≈ 18 SD và chi phối
 khoảng cách bình phương. Glass có `Ba` (82% bằng 0) và `Fe` (67% bằng 0).
 
-`lich_su/experiments/run_overlap_diagnostics.py prep`, NKCV2 gốc, 3 seed:
+NKCV2 gốc, 3 seed:
 
 | Bộ | Tiền xử lý | Ngẫu nhiên | Gieo |
 |---|---|---|---|
@@ -387,7 +385,7 @@ quá tay (S3/S4 chỉ còn 1–2 cụm). Cả hai đều kém hơn bản mẫu 1
 
 ### 7e.3 CDW cũ so với base + gieo, cùng giao thức
 
-`lich_su/experiments/run_cdw_same_protocol.py`. Seed 100–104, S1–S4 mẫu 1000 điểm. CDW chạy như
+Seed 100–104, S1–S4 mẫu 1000 điểm. CDW chạy như
 lúc đề xuất (Standard, khởi tạo ngẫu nhiên); `CDW+gieo` dùng thêm gieo quần thể và tiền xử lý mới.
 
 | Bộ | Gốc | CDW cũ | Base + gieo (hiện hành) | CDW + gieo |
@@ -473,8 +471,7 @@ Gauss tách rời có nhiễu, Jain và giữ đúng số cụm.
 ## 7g. Chốt phiên bản hiện hành (hướng A)
 
 Quyết định: **NKCV2 gốc + gieo quần thể + gộp mảnh vụn + PX nhanh + tiền xử lý (bỏ cột gần hằng số,
-MinMax)**. CDW quay về `lich_su/` vì nó làm giảm ARI trên mô hình Gauss có nhiễu của bài báo (7f).
-Các bảng cũ ở 7e được chuyển sang `lich_su/results/ban_cu_final_table_*.csv`.
+MinMax)**. CDW bị loại vì nó làm giảm ARI trên mô hình Gauss có nhiễu của bài báo (7f).
 
 Đóng góp giữ lại cho bài báo:
 
@@ -621,9 +618,11 @@ Phiên bản 7h còn ba điểm dễ bị phản biện khi xét dưới góc đ
    - `ls_fi_with_noise`: thử thêm nhãn nhiễu `0` cho các điểm thưa (`ρ_i ≤ d_rho`) thông qua `df_element`.
 4. **Hậu kiểm mảnh vụn theo bằng chứng (`models/fragment_merge.py::merge_fragments_evidence`)**:
    - Chỉ gộp mảnh siêu nhỏ (`≤ K` điểm với `≥ 70%` phiếu láng giềng về một cụm đích, hoặc `< τ` nhưng `≥ 80%` cạnh ngắn đều trỏ vào một cụm đích) **và** phép gộp không làm phá vỡ cảnh quan fitness (`Δf ≤ 1e-4`).
-   - Mảnh cô lập có mật độ trung vị `≤ d_rho` được gán về nhãn nhiễu `0`. Các cụm nhỏ thật sự (như trên Ecoli, Glass) được bảo vệ nguyên vẹn.
+   - Mảnh cô lập có mật độ trung vị `≤ d_rho` được gán về nhãn nhiễu `0`. Mục tiêu là giữ các cụm nhỏ thật, nhưng số liệu hiện hành không xác nhận việc này (7j.3: Ecoli 9.2 → 6.4, Glass 5.8 → 3.2 cụm).
 
 ### 7i.3 Kết quả kiểm chứng đối sánh (Ablation)
+
+> Các số ở đây lấy từ nhiều phiên bản mã khác nhau; bài báo dùng bảng thống nhất ở mục 7j.2.
 
 So sánh giữa **Gốc** (`src/`), **Cải tiến cũ (7h)** (có gieo GMM/KM + phạt cứng + gộp ép 2%), **GA nội tại** (NKCV2 gốc + khởi tạo & toán tử `Gep`), **Đề xuất thuần GA (`day_du_ga`)** và **Đề xuất có hậu kiểm bằng chứng (`day_du_evidence`)**:
 
@@ -642,7 +641,9 @@ So sánh giữa **Gốc** (`src/`), **Cải tiến cũ (7h)** (có gieo GMM/KM +
 - **Bảo vệ được các cụm nhỏ thật trên dữ liệu thực:** Trên Ecoli (`k = 8`), số cụm tăng từ `2.5` (bản 7h cũ) lên **7.0 cụm** (`ARI = 0.455`); trên Glass (`k = 6`), số cụm tăng từ `2.0` lên **5–6.5 cụm** (`ARI = 0.210`, cao hơn cả bản gốc lẫn bản 7h).
 - **Giữ nguyên sức mạnh trên dữ liệu chồng lấn nhiều cụm:** Trên S2 (`k = 15`), `day_du_evidence` loại bỏ đúng 11 mảnh biên 1–3 điểm để hội tụ về **chính xác 15 cụm** với `ARI = 0.889`.
 
-### 7i.4 Tổng hợp toàn bộ các phép thử Ablation qua các giai đoạn (lưu trữ kết quả sau khi dọn `lich_su/`)
+### 7i.4 Tổng hợp toàn bộ các phép thử Ablation qua các giai đoạn
+
+> Các số ở đây lấy từ nhiều phiên bản mã khác nhau; bài báo dùng bảng thống nhất ở mục 7j.2.
 
 1. **Ablation nguồn khởi tạo (5 seed 100–104, trước khi chuyển sang khởi tạo đồ thị `Gep` mới)**:
    - Trên **Flame** (`k = 2`): Không gieo (`z0 = 2.0` cũ) đạt `0.013` (1 cụm sau gộp); chỉ cắt cây liên kết mật độ `dlink` nội tại (`gieo_dpc`) đạt **`0.929 ± 0.006`** (đúng 2 cụm ở 5/5 seed); gieo đầy đủ `GMM + KM + DPC` đạt `0.932 ± 0.005` (2 cụm). Điều này chứng minh chỉ cần cắt cây `dlink` nội tại của NKCV2 đã đủ tương đương gieo ngoại lai.
@@ -652,6 +653,8 @@ So sánh giữa **Gốc** (`src/`), **Cải tiến cũ (7h)** (có gieo GMM/KM +
    - **Mahalanobis cục bộ & Persistence tuyệt đối/tương đối (README §12)**: Mahalanobis tĩnh quá yếu trên `K = 3`; persistence tương đối tạo đỉnh giả ở vùng thưa. → *Được thay bằng độ sâu yên ngựa chuẩn hóa nhiễu Poisson `z` trong `NKCV-M`*.
    - **NKCV-A (Ái lực đồng xuất hiện A-CA / A-SNN / A-GMM, mục 7b & 7d.2)**: Thắng Flame và Glass nhưng làm giảm S1 (`0.905 → 0.806`) và phụ thuộc thiên lệch hình elip của GMM. → *Loại khỏi bản chính*.
    - **Gộp hai tầng theo BIC (mục 7b) & Gộp mảnh cứng `< 2% N` (mục 7f–7h)**: BIC gộp nhầm cụm phi lồi (Flame về 1 cụm); quy tắc `< 2% N` xóa sổ các cụm nhỏ thật trên Ecoli (`7.6 → 2.4` cụm) và Glass (`6.8 → 3.0` cụm). → *Được thay bằng toán tử `mutation_merge_graph` trong GA kết hợp hậu kiểm bằng chứng `merge_fragments_evidence`*.
+
+> `tong_hop_ket_qua.png` trộn nhiều phiên bản mã; `gaussian_noise_nc2_l2.png` chưa chạy lại trên mã hiện tại. Bài báo dùng bảng và hình ở mục 7j.
 
 Biểu đồ tổng hợp trực quan lưu tại [`results/tong_hop_ket_qua.png`](results/tong_hop_ket_qua.png) và [`results/gaussian_noise_nc2_l2.png`](results/gaussian_noise_nc2_l2.png).
 
@@ -703,11 +706,15 @@ Script: `experiments/run_z0_calibration.py` (`--part dinh` cho bảng A–B, `--
 | S2 (15) | 0.880–0.890 (24–28) → sau gộp 0.889–0.909 (15) | 0.819–0.888 (25–27) → sau gộp 0.834–0.905 (14–15) |
 
 **Vì sao đỉnh giả không xé cụm.** Trên một cạnh ngắn vượt yên ngựa (`d ≤ dt0`), gộp tốn `w·ρ_j`, cắt tốn
-`(1 − w)·ρ_j`. Cắt chỉ rẻ hơn khi `w > 0.5`, tức `s(z) > 5/6`, tức
-`z > z0 + ⅔(z_full − z0) = 3.17` với `z0 = 1.5`, `z_full = 4.0`. Dưới mức đó, tín hiệu yên ngựa chỉ thu hẹp
+`(1 − w)·ρ_j`. Trên **cạnh ngắn** này, cắt chỉ rẻ hơn khi `w > 0.5`, tức `s(z) > 5/6`, tức
+`z > z0 + ⅔(z_full − z0) = 3.17` với `z0 = 1.5`, `z_full = 4.0`. Trên cạnh ở vùng dốc và cạnh dài,
+cắt đã rẻ hơn ở `w` thấp hơn (xem 7j.4). Với cạnh ngắn, dưới mức 3.17, tín hiệu yên ngựa chỉ thu hẹp
 lợi thế của việc gộp (từ `0` so với `ρ_j` thành `w·ρ_j` so với `(1 − w)·ρ_j`), chứ không tự đẩy GA cắt. Ở
 bảng A, khi `z0 = 3.0` không mẫu rỗng nào còn đỉnh thứ hai; ở bảng C, đỉnh giả của khối đều chỉ nhận
-`w = 0.345 < 0.5`. Vì vậy trong bản mềm, `z0` không phải ngưỡng kiểm định mà là **điểm bắt đầu tính bằng
+`w = 0.345 < 0.5`. Riêng lập luận theo từng cạnh chưa đủ, vì Flame cùng `w ≈ 0.34` vẫn đảo dấu (7j.4): thứ
+quyết định là **tổng** trên mọi cạnh vượt yên ngựa. Đo trực tiếp trên khối đều ở bảng C (`f × N × K`, 56 mục,
+35 mục ngắn, 3 mục dài): NKCV2 gộp 47.15, cắt 70.80; NKCV-M gộp 56.42, cắt 61.52. Lợi thế gộp giảm từ 23.65
+còn 5.10 nhưng không đảo dấu, khớp với việc GA giữ 1 cụm. Vì vậy trong bản mềm, `z0` không phải ngưỡng kiểm định mà là **điểm bắt đầu tính bằng
 chứng**: yên ngựa sâu khoảng 1.5σ theo đơn vị nhiễu Poisson bắt đầu làm yếu lợi thế gộp; chỉ yên ngựa sâu
 trên ~3.2σ mới làm cạnh nghiêng hẳn về phía cắt.
 
@@ -724,6 +731,108 @@ trên ~3.2σ mới làm cạnh nghiêng hẳn về phía cắt.
 4. **Giới hạn phải nêu:** bằng chứng cho đỉnh thứ hai của Flame yếu (`z ≈ 1.83`). Flame chỉ có 2 đỉnh khi
    `z0 ≤ 1.75` và thất bại ở `z0 = 2.0`; luận văn nên trình bày bảng độ nhạy A–C thay vì một giá trị
    đơn lẻ. Bảng C mới có 3 seed.
+
+## 7j. Bảng cuối thống nhất và hình cho bài báo
+
+### 7j.1 Giao thức
+
+Script: `experiments/run_before_after.py` (chạy và ghi CSV/nhãn), `experiments/plot_before_after.py` (vẽ hình).
+`pop = 60`, `gen = 80`, seed 100–104. S1–S4 dùng cùng một mẫu ngẫu nhiên cố định 1000 điểm (`subsample`, seed 0).
+
+| Cấu hình | Nội dung |
+|---|---|
+| `goc` | NK-HGA gốc (`NKHGA`) trên dữ liệu `StandardScaler` |
+| `goc_prep` | `NKHGA` trên dữ liệu `preprocess` (bỏ cột gần hằng số, MinMax) |
+| `goc_ls26` | như `goc_prep`, `leng_local = 26` (bằng bản cải tiến) |
+| `day_du_ga` | `ImprovedNKHGA` mặc định, trước hậu xử lý |
+| `day_du_evidence` | `ImprovedNKHGA` sau `merge_fragments_evidence` |
+| `goc_baibao` | `NKHGA`, `pop = 100`, dừng sau `N/2` giây, 3 seed 100–102; `N` là cỡ mẫu sau `subsample`; đồng hồ thực, 6 tiến trình song song, không tính thời gian khởi tạo, `fast_px` bật |
+
+Lý do có các cấu hình đối chứng: với `gen = 80` và `leng_local = 100`, pha làm mới memetic của bản gốc
+không bao giờ chạy (`src/ga.py:127`). `goc_prep` tách phần đóng góp của tiền xử lý; `goc_ls26` tách phần
+đóng góp của chu kỳ memetic; `goc_baibao` là bản gốc chạy đúng giao thức thời gian của bài báo.
+CSV: `results/khong_gian_cum/runs_<bộ>.csv` và `runs_baibao_<bộ>.csv`.
+
+### 7j.2 Bảng kết quả
+
+ARI trung bình (số cụm trung bình). 5 seed mỗi ô, riêng `goc_baibao` 3 seed. **Bảng này thay các bảng
+trộn phiên bản (7h, 7i.3) trong bài báo.**
+
+| Bộ (k thật) | `goc` | `goc_baibao` | `goc_prep` | `goc_ls26` | `day_du_ga` | `day_du_evidence` |
+|---|---|---|---|---|---|---|
+| Flame (2) | 0.013 (1.8) | 0.013 (2.0) | 0.013 (2.0) | 0.013 (2.0) | 0.907 (2.4) | **0.907** (2.0) |
+| Aggregation (7) | 0.924 (6.2) | 0.988 (7.0) | 0.924 (6.2) | 0.939 (6.4) | **0.996** (7.0) | **0.996** (7.0) |
+| Jain (2) | **0.404** (7.6) | 0.272 (9.0) | 0.351 (9.0) | 0.314 (8.8) | 0.286 (11.0) | 0.290 (9.0) |
+| Iris (3) | 0.526 (5.8) | 0.524 (5.7) | 0.542 (5.2) | 0.542 (5.2) | 0.542 (4.2) | 0.547 (3.6) |
+| Ecoli (8) | 0.038 (2.6) | 0.038 (3.0) | **0.440** (7.4) | **0.440** (5.8) | 0.427 (9.2) | 0.430 (6.4) |
+| Glass (6) | 0.132 (6.2) | 0.165 (4.3) | 0.192 (6.8) | **0.199** (5.8) | 0.196 (5.8) | 0.197 (3.2) |
+| S1 (15) | 0.905 (14.0) | 0.905 (14.0) | 0.894 (14.0) | 0.906 (14.0) | 0.967 (22.4) | **0.975** (16.0) |
+| S2 (15) | 0.407 (8.6) | 0.414 (8.0) | 0.458 (8.2) | 0.431 (8.2) | 0.880 (25.8) | **0.891** (14.8) |
+| S3 (15) | 0.030 (4.4) | 0.253 (7.7) | 0.071 (5.4) | 0.140 (7.8) | 0.617 (27.2) | **0.623** (16.0) |
+| S4 (15) | 0.044 (6.0) | 0.057 (6.0) | 0.052 (5.6) | 0.040 (6.6) | 0.307 (17.2) | **0.313** (8.6) |
+
+### 7j.3 Đọc kết quả, phân bổ công lao
+
+- **Flame, S1–S4:** bản cải tiến hơn rõ rệt mọi đối chứng (Flame 0.013 → 0.907; S2 0.891 so với tốt nhất
+  của đối chứng 0.458; S3 0.623 so với 0.253; S4 0.313 so với 0.057). Số cụm S4 còn 8.6 so với 15 thật.
+- **Aggregation:** mức tăng công bằng là 0.988 → 0.996 (so với `goc_baibao`), không phải từ 0.924.
+- **Ecoli, Glass, Iris:** phần tăng gần như hoàn toàn đến từ tiền xử lý (`goc_prep`: Ecoli 0.038 → 0.440,
+  Glass 0.132 → 0.192, Iris 0.526 → 0.542). Ecoli (0.430) và Glass (0.197) thấp hơn nhẹ so với `goc_ls26`
+  (0.440, 0.199). Không ghi công này cho fitness.
+- **Jain: không cải thiện.** 0.290 so với 0.404 của `goc` ở gen 80 (các seed của `goc` trải 0.196–0.751),
+  0.272 của `goc_baibao` và 0.314 của `goc_ls26`. Phải nêu, không giấu.
+- **Glass:** sau hậu xử lý số cụm trung bình còn 3.2, xa 6 thật (trước hậu xử lý 5.8). Ecoli: 9.2 → 6.4
+  (thật 8).
+
+### 7j.4 Cơ chế trên Flame (fig1)
+
+So sánh fitness toàn cục của "một cụm" và "cắt tại các lưu vực", đơn vị `f × N × K`:
+
+| Mô hình | Gộp | Cắt |
+|---|---|---|
+| NKCV2 | 5.667 | 7.510 (gộp rẻ hơn) |
+| NKCV-M | 6.952 | 6.225 (cắt rẻ hơn) |
+
+`z = 1.833`, `w = 0.34` trên mọi cạnh vượt yên ngựa; có 13 mục có hướng, tương ứng 9 cặp phân biệt.
+Xét từng cạnh, cạnh ngắn (`d ≤ dt0`, 6 trong 13 mục) vẫn nghiêng về gộp ở `w = 0.34`. Dấu đảo đến từ
+**tổng**: trên 13 mục này, gộp 3.2207 so với cắt 2.4942 (chênh 0.7265, đúng bằng 6.9516 − 6.2251), và riêng
+hai mục dài đã cho gộp ≈ 1.83 so với cắt 0. Vì vậy **không** viết rằng NKCV-M làm mỗi cạnh ngắn rẻ hơn khi cắt.
+
+### 7j.5 Hậu xử lý
+
+`merge_fragments_evidence` có dung sai `Δf ≤ 1e-4` **mỗi bước**, và cộng dồn vì `f_current` cập nhật sau
+mỗi lần gộp: `f` tăng ở 40 trong 50 lần chạy, tối đa `+4.678e-4`. Bước này giảm mảnh vụn (S1 23 → 16,
+S2 26 → 15 ở các lần chạy được vẽ), nhưng mức tăng ARI trung bình nhỏ: lớn nhất là S2, `day_du_ga` →
+`day_du_evidence` +0.012 (0.880 → 0.891); các bộ còn lại ≤ 0.008.
+
+### 7j.6 Hình cho bài báo
+
+Thư mục `results/khong_gian_cum/`, PNG 300 dpi, chỉ giữ bản tiếng Anh (hậu tố `_en`).
+
+| Hình | Nội dung | Ủng hộ được | KHÔNG được dùng để ủng hộ |
+|---|---|---|---|
+| `fig1_co_che_en.png` | cơ chế trên Flame | dấu của fitness toàn cục đảo chiều trên Flame | tối ưu của `z0` / `z_full`; lợi thế cắt theo từng cạnh |
+| `fig2_ari_en.png` | ARI từng bộ so với đối chứng, gồm Jain | so sánh ARI với đối chứng, kể cả thất bại Jain | ý nghĩa thống kê; công của fitness trên Ecoli/Glass/Iris |
+| `fig3_khong_gian_chinh_en.png` (Flame, Jain, S2, S3) | phân hoạch trong không gian dữ liệu | khôi phục hình dạng và thất bại trên Jain | số cụm điển hình; hiệu năng trên S đầy đủ |
+| `fig4_khong_gian_phu_en.png` (Aggregation, S1, S4) | phân hoạch | bổ sung | như fig3 |
+| `fig5_nhieu_chieu_en.png` (Iris, Ecoli, Glass; phương sai PCA 96/78/63%) | phân hoạch chiếu PCA | bổ sung | như fig3 |
+| `fig6_hau_xu_ly_en.png` | loại mảnh vụn | việc loại mảnh vụn | cải thiện ARI |
+
+Quy tắc đọc hình: ở `fig2`, thanh là ARI trung bình, vạch mảnh là khoảng min–max của các seed. Ở các hình phân hoạch, mỗi panel vẽ seed có ARI trung vị nên các cột có thể là seed khác nhau; một cụm chỉ
+tính là khớp khi khớp Hungarian và Jaccard ≥ 0.5; bộ 2D vẽ ở tọa độ gốc, các bộ còn lại vẽ ở PCA của
+`preprocess(X)`, nên hình không phải không gian NK-HGA gốc đã dùng (`StandardScaler`).
+
+### 7j.7 Giới hạn cần nêu trong bài
+
+- 5 seed: kiểm định Wilcoxon hai phía không thể cho `p` nhỏ hơn 0.0625; không tuyên bố có ý nghĩa thống kê.
+- S1–S4 là một mẫu cố định 1000 điểm, không phải dữ liệu đầy đủ.
+- Đối chứng `N/2` giây chỉ có 3 seed và phụ thuộc tải máy.
+- `run_final_table.py` cấu hình `cai_tien_cu` không tái tạo được 7h, nên 7h không tái lập được từ mã hiện tại.
+- Mô hình Gauss có nhiễu (`run_gaussian_noise.py`) chưa chạy lại trên mã hiện tại và vẫn truyền `pool=`,
+  tham số này bị bỏ qua khi `init_source` là nội tại; do đó không dẫn `results/gaussian_noise_nc2_l2.png`
+  như kết quả hiện hành.
+- Thời gian chạy: tỉ lệ trung bình `runtime_s` của `day_du_evidence` so với `goc` nằm trong khoảng
+  1.07 (Aggregation) đến 1.68 (Ecoli) lần. Các lần chạy song song nên chỉ mang tính tham khảo.
 
 ## 8. Nguồn tham khảo (đã kiểm tra tồn tại; xếp hạng Q theo SJR nên tra lại tại scimagojr.com)
 

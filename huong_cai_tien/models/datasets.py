@@ -7,8 +7,7 @@ nhan that 1-based.
 Tien xu ly cua phien ban hien hanh (`preprocess`): bo cac cot gan nhu hang so
 roi MinMax. Ly do va so lieu: DE_XUAT_FITNESS_CHONG_LAN.md muc 7d.3 va 7e.
 `src/run_comparison.py` (ban tai hien bai bao) van dung StandardScaler va khong
-bi dong toi; cac script trong lich_su/ dung `lich_su/models/datasets_std.py`
-de giu dung StandardScaler nhu luc tao ra so lieu cua chung.
+bi dong toi.
 
     from datasets import DATASETS, load_raw, preprocess
     X, y = DATASETS["flame"]()          # da tien xu ly

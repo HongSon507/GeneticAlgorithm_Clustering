@@ -8,8 +8,9 @@ Cai tien cot loi:
   * toan tu GA: Graph-aware Merge/Split theo lien ket bien Gep va ho tro nhan nhieu 0;
   * chu ky Memetic: leng_local thich nghi theo max_gen;
   * toc do: fast_px (O(N log N) map_solutions va fix_labels numba, trung bit voi src/px.py);
-  * hau xu ly (tuy chon): merge="evidence" chi gop khi co bang chung Delta f <= 0,
-    bao ve cum nho that va giu nhan nhieu 0. Mac dinh co the tat (merge=False) de dung thuan GA.
+  * hau xu ly (tuy chon): merge="evidence" chi gop khi co lien ket ngan ap dao va
+    Delta f <= 1e-4 moi buoc (dung sai cong don qua cac lan gop), giu nhan nhieu 0.
+    Mac dinh co the tat (merge=False) de dung thuan GA.
 """
 
 from __future__ import annotations
@@ -35,7 +36,7 @@ class ImprovedNKHGA(SeededNKHGA):
       fitness: "mode" (mem, mac dinh), "mode_hard" (ban cu), "nkcv2" (goc)
       init_source: "internal" (thuan GA tren do thi Gep, mac dinh), "pool", "random"
       use_graph_mutations: True (toan tu merge/split theo Gep, mac dinh)
-      merge: False (thuan GA khong hau xu ly), "evidence" (kiem chung Delta f <= 0),
+      merge: False (thuan GA khong hau xu ly), "evidence" (kiem chung Delta f <= 1e-4),
              "legacy" (quy tac cu 2% N), True (trung "evidence")
       local_scale: True / False (chuan hoa thang khoang cach cuc bo)
     """

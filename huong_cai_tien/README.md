@@ -15,15 +15,22 @@ Bản cải tiến thuần GA dùng cho bài báo nằm ở `models/improved.py`
 - **Fitness NKCV-M mềm** (`nkcv2_mode.py`): dùng đỉnh mật độ có ý nghĩa (ToMATo trên đồ thị kNN đối xứng, độ sâu yên ngựa chuẩn hóa nhiễu $z > z_0 = 1.5$) làm **tín hiệu điều chỉnh phụ** với trọng số tĩnh có trần $w_{ij} \le w_{\max} = 0.6$. Đóng góp trên cạnh vượt yên ngựa trộn $(1 - w_{ij})\,\text{NKCV2}_{ij} + w_{ij}\,\text{Mode}_{ij}$, cho phép GA vẫn gộp hai đỉnh nếu cấu trúc toàn cục ủng hộ;
 - **Khởi tạo đa cấu trúc nội tại trên $G_{ep}$** (`seeded_ga.py`): cắt ngẫu nhiên rừng cây liên kết mật độ `dlink = M[:, 0]` và phân vùng Voronoi ngẫu nhiên trên ma trận khoảng cách $D$ có sẵn của `NKCV2Model` (100% nội tại, không gọi K-means/GMM ngoài, không cố định $k$ mục tiêu), kết hợp chu kỳ Memetic `leng_local` thích nghi theo `max_gen`;
 - **Toán tử đột biến trên đồ thị & nhãn nhiễu `0`** (`ga_operators.py`): `mutation_merge_graph` ưu tiên gộp các mảnh có mật độ cạnh ngắn $G_{ep}$ qua biên cao; `mutation_split_graph` chọn hai tâm tách theo $\rho \cdot D$; `ls_fi_with_noise` xét nhãn nhiễu `0` cho điểm thưa ($\rho_i \le d_\rho$);
-- **Hậu kiểm mảnh vụn theo bằng chứng** (`fragment_merge.py::merge_fragments_evidence`): chỉ gộp mảnh siêu nhỏ khi có liên kết ngắn áp đảo sang cụm láng giềng và không phá vỡ cảnh quan fitness ($\Delta f \le 10^{-4}$); mảnh cô lập mật độ thấp gán về nhãn nhiễu `0`; bảo vệ tuyệt đối các cụm nhỏ thật (như trên Ecoli, Glass);
+- **Hậu kiểm mảnh vụn theo bằng chứng** (`fragment_merge.py::merge_fragments_evidence`): chỉ gộp mảnh siêu nhỏ khi có liên kết ngắn áp đảo sang cụm láng giềng và không phá vỡ cảnh quan fitness ($\Delta f \le 10^{-4}$); mảnh cô lập mật độ thấp gán về nhãn nhiễu `0`. Bước này giảm số cụm: Ecoli 9.2 → 6.4 (thật 8), Glass 5.8 → 3.2 (thật 6), nên không bảo vệ được mọi cụm nhỏ thật;
 - **Tiền xử lý & tốc độ:** bỏ cột gần hằng số rồi MinMax (`datasets.preprocess`); PX `O(N log N)` trùng từng bit `src/px.py` (`fast_px.py`).
 
-Kết quả chính (so với `src/` và bản 7h cũ): Flame tự tách đạt ARI **0.907** (2 cụm) không cần gieo K-means/GMM; Aggregation **0.988** (đúng 7 cụm ở mọi seed); S2 **0.889** (đúng 15 cụm, so với 0.396 / 8 cụm của bản gốc); Ecoli giữ được **6–7 cụm** (ARI **0.455–0.461**, khắc phục lỗi gộp ép còn 2–3 cụm của bản 7h); Glass tìm đúng **6 cụm thật** (ARI **0.210**). Chi tiết:
-[`DE_XUAT_FITNESS_CHONG_LAN.md`](DE_XUAT_FITNESS_CHONG_LAN.md) mục 7h–7i.
+Kết quả chính (bảng thống nhất, 5 seed, `pop = 60`, `gen = 80`; chi tiết ở [`DE_XUAT_FITNESS_CHONG_LAN.md`](DE_XUAT_FITNESS_CHONG_LAN.md) mục 7j):
 
-Các mục 1–13 bên dưới và [`DE_XUAT_FITNESS_CHONG_LAN.md`](DE_XUAT_FITNESS_CHONG_LAN.md) lưu giữ toàn bộ số liệu Ablation Study của các hướng đã thử nghiệm (CDW, Mahalanobis, Persistence, NKCV-A, gộp BIC hai tầng, tách nguồn gieo và kiến trúc thuần GA hiện hành). Biểu đồ tổng hợp nằm tại [`results/tong_hop_ket_qua.png`](results/tong_hop_ket_qua.png) và [`results/gaussian_noise_nc2_l2.png`](results/gaussian_noise_nc2_l2.png).
+- **Thắng rõ:** Flame 0.013 → **0.907** (2 cụm, không gieo K-means/GMM); S1 0.975, S2 0.891, S3 0.623, S4 0.313, cao hơn mọi đối chứng (S2 so với 0.458, S3 so với 0.253, S4 so với 0.057).
+- **Aggregation:** mức tăng công bằng là 0.988 → **0.996** (so với bản gốc chạy đúng giao thức `N/2` giây), không phải từ 0.924.
+- **Ecoli, Glass, Iris:** phần tăng gần như hoàn toàn do tiền xử lý (Ecoli 0.038 → 0.440), không ghi cho fitness; Ecoli (0.430) và Glass (0.197) thấp hơn nhẹ so với đối chứng `goc_ls26`. Sau hậu xử lý Glass chỉ còn 3.2 cụm (thật 6).
+- **Jain: không cải thiện** (0.290 so với 0.404 của bản gốc ở gen 80, các seed bản gốc trải 0.196–0.751; 0.272 ở giao thức `N/2` giây).
+- **Giới hạn:** 5 seed, không đủ để tuyên bố ý nghĩa thống kê; S1–S4 là một mẫu cố định 1000 điểm. Mục 7j.7 liệt kê đầy đủ.
+
+Các mục 1–13 bên dưới và [`DE_XUAT_FITNESS_CHONG_LAN.md`](DE_XUAT_FITNESS_CHONG_LAN.md) lưu giữ toàn bộ số liệu Ablation Study của các hướng đã thử nghiệm (CDW, Mahalanobis, Persistence, NKCV-A, gộp BIC hai tầng, tách nguồn gieo và kiến trúc thuần GA hiện hành). Hình cho bài báo nằm tại `results/khong_gian_cum/` (6 hình, chỉ bản tiếng Anh `_en`, xem mục 18). `results/tong_hop_ket_qua.png` trộn nhiều phiên bản mã; `results/gaussian_noise_nc2_l2.png` chưa chạy lại trên mã hiện tại. Hai hình này chỉ là lịch sử.
 
 ## 1. Kết luận nghiên cứu
+
+> Các kết luận dưới đây thuộc giai đoạn CDW. Phiên bản hiện hành và số liệu dùng cho bài báo ở mục 0.
 
 1. Bản tái hiện NK-HGA là đúng và đạt ARI `0.9876`, 7 cụm trên Aggregation.
 2. Lỗi chính trên Flame và Iris nằm ở **NKCV2**, không phải bộ tối ưu: nhãn thật có fitness xấu
@@ -378,8 +385,6 @@ Ba seed `100,101,102`, `pop=60`, `gen=80`:
 - Iris: ARI tăng nhẹ nhưng số cụm tăng gần gấp đôi; đây không phải cải thiện cấu trúc.
 - Jain: thua cả 3 seed và phân mảnh 26–27 cụm; CDW không tổng quát hóa.
 
-Hình tổng kết: [`lich_su/results/cdw_ari_4datasets.png`](lich_su/results/cdw_ari_4datasets.png).
-
 ## 9. Ablation tám biến thể
 
 Mọi thành phần không dùng được thay bằng phần tử trung hòa `1`. Thí nghiệm Flame, seed 100–101,
@@ -514,37 +519,30 @@ toàn giữa phần cứng; thí nghiệm nghiên cứu dùng số thế hệ c�
 ```text
 huong_cai_tien/
 ├── README.md                         tài liệu tổng hợp này
-├── DE_XUAT_FITNESS_CHONG_LAN.md      đề xuất + bằng chứng cho phiên bản hiện hành (mục 7b–7e)
+├── DE_XUAT_FITNESS_CHONG_LAN.md      đề xuất + bằng chứng; mục 7j là bảng/hình cho bài báo
 ├── models/                           PHIÊN BẢN HIỆN HÀNH
 │   ├── _bootstrap.py                 chèn src/ và models/ vào sys.path
 │   ├── datasets.py                   nạp 10 bộ dữ liệu + preprocess (bỏ cột gần hằng số, MinMax)
 │   ├── fast_px.py                    map_solutions / fix_labels nhanh, đầu ra trùng src/px.py
-│   ├── seeded_ga.py                  gieo quần thể từ GMM / k-means / Density Peaks
+│   ├── seeded_ga.py                  khởi tạo nội tại trên Gep (cây dlink, Voronoi); chu kỳ memetic
+│   ├── ga_operators.py               mutation_merge_graph / split_graph, ls_fi_with_noise
 │   ├── nkcv2_mode.py                 fitness NKCV-M (định nghĩa cụm theo đỉnh mật độ)
-│   ├── fragment_merge.py             gộp mảnh vụn sau GA
+│   ├── fragment_merge.py             gộp mảnh vụn sau GA (merge_fragments_evidence)
 │   ├── gaussian_model.py             bộ sinh mô hình Gauss có nhiễu (tái tạo theo bài báo)
 │   └── improved.py                   ImprovedNKHGA = NKCV-M + gieo + gộp + PX nhanh
 ├── experiments/
 │   ├── _paths.py
-│   ├── run_final_table.py            bảng cuối: bản gốc vs bản cải tiến, 10 bộ
-│   └── run_gaussian_noise.py         mô hình Gauss có nhiễu theo giao thức bài báo
-├── results/                          CSV/PNG của phiên bản hiện hành
-└── lich_su/                          các hướng đã thử, giữ để tái lập số liệu (mục 4–13, 7b–7d)
-    ├── models/                       CDW (weighted_model, nkcv2_cdw, ablation_model),
-    │                                 nkcv2_mahalanobis, nkcv2_persist, nkcv2_affinity (NKCV-A),
-    │                                 two_level_merge (gộp BIC), datasets_std (StandardScaler cũ)
-    ├── experiments/                  run_cdw_*, run_ablation, test_constant_weight_hypothesis,
-    │                                 run_persist, run_fitness_ari_correlation, kout_profile,
-    │                                 test_px_correctness, run_nkcva_two_level, run_seeding_grid,
-    │                                 run_overlap_diagnostics
-    └── results/                      CSV/PNG của các thí nghiệm lịch sử
+│   ├── run_before_after.py           bảng thống nhất 10 bộ: goc/goc_prep/goc_ls26/day_du_*; --paper-protocol
+│   ├── plot_before_after.py          vẽ 6 hình cho bài báo (mặc định bản tiếng Anh)
+│   ├── run_z0_calibration.py         hiệu chuẩn z0 trên dữ liệu rỗng (DE_XUAT 7i.5)
+│   ├── run_final_table.py            bảng cũ (cấu hình cai_tien_cu không tái tạo được 7h)
+│   └── run_gaussian_noise.py         mô hình Gauss có nhiễu (chưa chạy lại trên mã hiện tại)
+└── results/
+    ├── khong_gian_cum/               runs_<bộ>.csv, runs_baibao_<bộ>.csv, labels_<bộ>.npz (git-ignore),
+    │                                 fig1..fig6 (_en.png)
+    ├── tong_hop_ket_qua.png          trộn nhiều phiên bản mã (lịch sử)
+    └── gaussian_noise_nc2_l2.png     chưa chạy lại trên mã hiện tại (lịch sử)
 ```
-
-Script lịch sử đọc dữ liệu qua `lich_su/models/datasets_std.py` (StandardScaler trên mọi cột, đúng
-như lúc tạo ra số liệu), nên chạy lại cho đúng các con số đã ghi.
-
-Trong `lich_su/models/`, `WeightedNKCV2Model` là lớp chung duy nhất cài ba kernel có trọng số;
-các model CDW chỉ tính `raw_w`.
 
 ## 15. Cách tái lập
 
@@ -555,28 +553,20 @@ Phiên bản hiện hành:
 ```text
 python tests/run_tests.py
 python huong_cai_tien/models/fast_px.py                       # bản nhanh trùng src/px.py
-python huong_cai_tien/experiments/run_final_table.py          # bảng cuối (~30 phút, 4 lõi: chia --datasets)
+python huong_cai_tien/experiments/run_final_table.py          # bảng cũ, không dùng cho bài báo (DE_XUAT 7j.7)
 python huong_cai_tien/experiments/run_final_table.py --summary
 ```
 
-Lịch sử (CDW và các hướng khác):
+Bảng thống nhất và hình cho bài báo (DE_XUAT mục 7j):
 
 ```text
-python huong_cai_tien/lich_su/experiments/test_px_correctness.py
-python huong_cai_tien/lich_su/models/nkcv2_cdw.py
-python huong_cai_tien/lich_su/models/ablation_model.py
-python huong_cai_tien/lich_su/models/nkcv2_mahalanobis.py
-
-python huong_cai_tien/lich_su/experiments/run_cdw_screen.py
-python huong_cai_tien/lich_su/experiments/run_cdw_ga.py --runs 3
-python huong_cai_tien/lich_su/experiments/run_cdw_jain.py
-python huong_cai_tien/lich_su/experiments/run_cdw_ari_plot.py
-python huong_cai_tien/lich_su/experiments/run_ablation.py --datasets flame --seeds 100 101 --tag screening
-python huong_cai_tien/lich_su/experiments/test_constant_weight_hypothesis.py --structure-only
+python huong_cai_tien/experiments/run_before_after.py
+python huong_cai_tien/experiments/run_before_after.py --paper-protocol --seeds 100 101 102
+python huong_cai_tien/experiments/plot_before_after.py
 ```
 
-`run_cdw_ari_plot.py` chỉ sinh PNG và phải chạy lại GA để vẽ. `nkcv2_persist.py` không có khối
-`__main__`; chạy kiểm thử của nó qua `lich_su/experiments/run_persist.py`.
+Tệp `.npz` bị git-ignore, nên trên máy khác phải chạy lệnh đầu tiên trước khi vẽ. Mặc định
+`plot_before_after.py` chỉ vẽ bản tiếng Anh; truyền `--lang vi` nếu cần bản tiếng Việt.
 
 ## 16. Quy tắc nghiên cứu
 
@@ -589,6 +579,8 @@ python huong_cai_tien/lich_su/experiments/test_constant_weight_hypothesis.py --s
 7. Phải ghi dataset, seed, `K`, population, generation và stopping criterion cho mọi bảng.
 
 ## 17. Khung báo cáo khóa luận đề xuất
+
+> Đây là dàn ý khóa luận cũ, xoay quanh CDW. Thứ tự hình và các tuyên bố cho bài báo nằm ở `DE_XUAT_FITNESS_CHONG_LAN.md` mục 7j.6.
 
 ### Chương 1 — Mở đầu
 
@@ -650,14 +642,17 @@ python huong_cai_tien/lich_su/experiments/test_constant_weight_hypothesis.py --s
 
 | Tệp | Dùng cho báo cáo |
 |---|---|
-| [`lich_su/results/cdw_ari_4datasets.png`](lich_su/results/cdw_ari_4datasets.png) | ARI gốc và CDW trên bốn bộ |
-| [`lich_su/results/kout_profile.png`](lich_su/results/kout_profile.png) | phân bố outdegree |
-| [`lich_su/results/ablation_results.csv`](lich_su/results/ablation_results.csv) | 8 variant × 2 seed trên Flame |
+| [`results/khong_gian_cum/fig1_co_che_en.png`](results/khong_gian_cum/fig1_co_che_en.png) | cơ chế đảo dấu fitness trên Flame |
+| [`results/khong_gian_cum/fig2_ari_en.png`](results/khong_gian_cum/fig2_ari_en.png) | ARI từng bộ so với đối chứng, gồm Jain |
+| [`results/khong_gian_cum/fig3_khong_gian_chinh_en.png`](results/khong_gian_cum/fig3_khong_gian_chinh_en.png) | phân hoạch Flame, Jain, S2, S3 |
+| [`results/khong_gian_cum/fig4_khong_gian_phu_en.png`](results/khong_gian_cum/fig4_khong_gian_phu_en.png) | phân hoạch Aggregation, S1, S4 (bổ sung) |
+| [`results/khong_gian_cum/fig5_nhieu_chieu_en.png`](results/khong_gian_cum/fig5_nhieu_chieu_en.png) | Iris, Ecoli, Glass chiếu PCA (bổ sung) |
+| [`results/khong_gian_cum/fig6_hau_xu_ly_en.png`](results/khong_gian_cum/fig6_hau_xu_ly_en.png) | loại mảnh vụn sau hậu xử lý |
 | `../results/comparison_result.png` | NK-HGA, CGA, k-means và DBSCAN trên Aggregation |
 
 ## 19. Kết luận cuối
 
-CDW hợp lệ về toán học và kiến trúc, có một kết quả mạnh trên Flame, nhưng bằng chứng Jain phủ định
+Về giai đoạn CDW (phiên bản hiện hành là NKCV-M mềm + khởi tạo nội tại, mục 0; số liệu bài báo ở DE_XUAT mục 7j): CDW hợp lệ về toán học và kiến trúc, có một kết quả mạnh trên Flame, nhưng bằng chứng Jain phủ định
 tính tổng quát. Phân tích nhân quả cho thấy hạ trọng số nhánh khác nhãn là cơ chế chính, còn cấu trúc
 theo cạnh giúp tăng thêm chất lượng và ổn định nên chưa thể xóa. Giá trị lớn nhất của nghiên cứu không
 chỉ là một công thức mới, mà là chuỗi bằng chứng chỉ ra **khi nào NKCV2 sai, vì sao sai, cách loại sớm
